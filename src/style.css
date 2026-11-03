@@ -158,3 +158,18 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 
 .squish-switch__thumb { display: grid; place-items: center; color: var(--bg); }
 .squish-switch[data-on] .squish-switch__thumb { color: var(--surface); }
+
+.provider-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.provider-controls label { display: grid; gap: 4px; font-size: 13px; }
+.provider-controls input, .provider-controls select, .provider-button {
+  border: 1px solid var(--line); background: var(--bg); border-radius: 7px; padding: 8px 10px;
+}
+.provider-button { font-weight: 650; }
+.provider-button:disabled { opacity: .55; cursor: default; }
+.chat-log { display: grid; gap: 10px; margin-block: 20px; }
+.chat-log:empty { margin-bottom: 0; }
+.chat-message { border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-wrap: anywhere; }
+.chat-user { background: var(--bg); }
+.chat-message p { white-space: pre-wrap; }
+.chat-error { margin-top: 12px; color: #e06060; }
+:root[data-theme="light"] .chat-error { color: #a32323; }

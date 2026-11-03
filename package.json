@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "desktop": "npm run build && electron .",
-    "test:desktop": "electron tests/desktop-smoke.cjs"
+    "test:desktop": "electron tests/desktop-smoke.cjs",
+    "test:providers": "node tests/live-providers.cjs"
   },
   "dependencies": {
     "framer-motion": "^12.0.0",

@@ -6,7 +6,7 @@ import GlareHover from './react-bits/GlareHover'
 import FlipCard from './react-bits/FlipCard'
 import LatticeLoader from './react-bits/LatticeLoader'
 import SquishSwitch from './react-bits/SquishSwitch'
-import ThoughtLine from './react-bits/ThoughtLine'
+import AIWorkspace from './AIWorkspace'
 import TechText from './react-bits/TechText'
 import './style.css'
 
@@ -35,7 +35,6 @@ const capabilities = [
   { icon: ShieldCheck, title: 'Approval controls', detail: 'Review sensitive actions and see what the agent attempted in its activity history.' },
   { icon: Terminal, title: 'Development tools', detail: 'Work with project files, PowerShell output, and code changes from one desktop workspace.' },
 ]
-const draftSteps = ['Stored on this device', 'Sending becomes available when an AI provider is connected']
 
 function App() {
   const [logoFlipped, setLogoFlipped] = useState(false)
@@ -89,10 +88,10 @@ function App() {
             </section>
           </> : <>
             <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
-            {page.name === 'AI workspace' && <div className="panel draft-panel"><label htmlFor="draft">Instruction draft</label><textarea id="draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Describe what you want to do…" />{draft ? <ThoughtLine working={false} label="Draft saved locally" doneLabel="Draft saved locally" steps={draftSteps} showTimer={false} glyph="dot" glyphColor="var(--accent)" shimmer={false} /> : <small>Sending will be available when an AI provider is connected.</small>}</div>}
             {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
             {page.name === 'Settings' && <div className="panel settings"><span>Appearance</span>{themeButton}</div>}
           </>}
+          <div hidden={page.name !== 'AI workspace'}><AIWorkspace draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>
     </div>

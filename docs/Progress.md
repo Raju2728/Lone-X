@@ -9,3 +9,7 @@ TypeScript checking and the Vite production build passed. Headless Edge verified
 The Windows Electron smoke test passed for launch, all seven navigation targets, theme switching and persistence, and renderer isolation. Full visual and keyboard accessibility review remains pending. Provider chat, task execution, terminal commands, SQLite persistence, and cloud integration belong to later milestones.
 
 
+
+## Milestone 2 — In progress
+
+The desktop workspace now has provider and model selection, Ollama model discovery, streamed Ollama and OpenAI responses, provider errors, and local SQLite conversation history. The Windows smoke test exercises the chat UI with simulated Ollama and OpenAI responses. It verifies model discovery, provider switching, error handling, draft retention, retry, and SQLite storage in an isolated profile. Live acceptance still requires a running Ollama model and an OpenAI key with access to the selected model.

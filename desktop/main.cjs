@@ -1,5 +1,7 @@
 const { app, BrowserWindow, session } = require('electron')
 const path = require('node:path')
+const { registerAI } = require('./ai.cjs')
+const rendererPath = path.join(__dirname, '../dist/index.html')
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -10,16 +12,17 @@ function createWindow() {
     minHeight: 560,
     backgroundColor: '#000000',
     icon: path.join(__dirname, '../public/logo.png'),
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false }
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', event => event.preventDefault())
-  window.loadFile(path.join(__dirname, '../dist/index.html'), { hash: 'workspace' })
+  window.loadFile(rendererPath, { hash: 'workspace' })
 }
 
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
   session.defaultSession.setPermissionCheckHandler(() => false)
+  registerAI(app, rendererPath)
   createWindow()
 })
 app.on('window-all-closed', () => app.quit())

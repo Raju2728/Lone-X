@@ -8,7 +8,11 @@ type Project = {
 
 declare global {
   interface Window {
-    loneXProjects: { open: () => Promise<Project | null>; preview: () => Promise<{ name: string; text: string } | null> }
+    loneXProjects: {
+      open: () => Promise<Project | null>
+      preview: () => Promise<{ name: string; text: string } | null>
+      saveCopy: () => Promise<string | null>
+    }
   }
 }
 
@@ -17,6 +21,7 @@ export default function Projects() {
   const [preview, setPreview] = useState<{ name: string; text: string } | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState('')
 
   async function open() {
     setPending(true)
@@ -36,9 +41,26 @@ export default function Projects() {
     setError('')
     try {
       const selected = await window.loneXProjects.preview()
-      if (selected) setPreview(selected)
+      if (selected) {
+        setPreview(selected)
+        setSaved('')
+      }
     } catch {
       setError('Could not preview this file. Choose a UTF-8 text file up to 128 KB.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function saveCopy() {
+    setPending(true)
+    setError('')
+    setSaved('')
+    try {
+      const name = await window.loneXProjects.saveCopy()
+      if (name) setSaved(name)
+    } catch {
+      setError('Could not save the copy. Choose a new filename in a writable folder.')
     } finally {
       setPending(false)
     }
@@ -51,6 +73,8 @@ export default function Projects() {
     <button className="provider-button ml-2" disabled={pending} onClick={openPreview}>Preview text file</button>
     {preview && <div className="project-list">
       <h2>{preview.name}</h2>
+      <button className="provider-button" disabled={pending} onClick={saveCopy}>Save a copy</button>
+      {saved && <p role="status">Saved {saved}</p>}
       <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all">{preview.text}</pre>
     </div>}
     {error && <p className="chat-error" role="alert">{error}</p>}

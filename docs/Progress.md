@@ -17,3 +17,5 @@ The approved scope uses Ollama exclusively. Live streaming passed with qwen2.5:0
 Projects can list the immediate entries of a folder selected in the Windows folder picker. The renderer supplies no filesystem path, and the handler checks the caller before opening the picker. The smoke test verifies cancellation and approved folder listing. File reads and writes, PowerShell execution, audit logging, and emergency stop are pending.
 
 The project browser can preview an explicitly selected UTF-8 text file up to 128 KB. Thought Line shows waiting and streaming status in the local chat.
+
+Users can save the preview bytes to a new file selected in the Windows save dialog. The desktop smoke test verifies the copy and refusal to overwrite an existing file.

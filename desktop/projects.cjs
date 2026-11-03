@@ -1,10 +1,11 @@
 const { BrowserWindow, dialog, ipcMain } = require('electron')
-const { open, opendir } = require('node:fs/promises')
+const { open, opendir, writeFile } = require('node:fs/promises')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 
 function registerProjects(rendererPath) {
   const pending = new Set()
+  const previews = new WeakMap()
   const handle = (channel, action) => ipcMain.handle(channel, async event => {
     const url = new URL(event.senderFrame?.url || 'about:blank')
     if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
@@ -64,10 +65,24 @@ function registerProjects(rendererPath) {
       }
       const bytes = buffer.subarray(0, length)
       if (length > limit || bytes.includes(0)) throw new Error('Select a UTF-8 text file up to 128 KB.')
-      return { name: path.basename(selected), text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
+      const preview = { name: path.basename(selected), text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
+      previews.set(window, bytes)
+      return preview
     } finally {
       await file.close()
     }
+  })
+
+  handle('projects:save-copy', async window => {
+    const bytes = previews.get(window)
+    if (!bytes) throw new Error('Preview a text file first.')
+    const result = await dialog.showSaveDialog(window, {
+      title: 'Save a new copy of the preview',
+      defaultPath: 'preview-copy.txt'
+    })
+    if (result.canceled || !result.filePath) return null
+    await writeFile(result.filePath, bytes, { flag: 'wx' })
+    return path.basename(result.filePath)
   })
 }
 

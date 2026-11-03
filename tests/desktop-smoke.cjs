@@ -31,6 +31,8 @@ dialog.showOpenDialog = async (_window, options) => options.properties.includes(
   : ++pickerCount === 1
   ? { canceled: true, filePaths: [] }
   : { canceled: false, filePaths: [projectPath] }
+const copyPath = require('node:path').join(projectPath, 'copy.txt')
+dialog.showSaveDialog = async () => ({ canceled: false, filePath: copyPath })
 require('../desktop/main.cjs')
 
 setTimeout(() => {
@@ -87,7 +89,11 @@ app.whenReady().then(async () => {
   assert.deepEqual(await window.webContents.executeJavaScript('window.loneXProjects.preview()'), {
     name: 'README.md', text: 'fixture'
   })
-  console.log('Project picker cancellation, approved folder listing, and text preview passed.')
+  assert.equal(await window.webContents.executeJavaScript('window.loneXProjects.saveCopy()'), 'copy.txt')
+  assert.equal(require('node:fs').readFileSync(copyPath, 'utf8'), 'fixture')
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXProjects.saveCopy()'))
+  assert.equal(require('node:fs').readFileSync(copyPath, 'utf8'), 'fixture')
+  console.log('Project picker, read-only preview, and save-copy overwrite protection passed.')
   const retention = new DatabaseSync(dbPath)
   const migrated = retention.prepare('SELECT created_at FROM messages WHERE id = 1').get()
   assert.ok(Date.now() - migrated.created_at < 60000)

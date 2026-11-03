@@ -13,5 +13,6 @@ contextBridge.exposeInMainWorld('loneXAI', {
 
 contextBridge.exposeInMainWorld('loneXProjects', {
   open: () => ipcRenderer.invoke('projects:open'),
-  preview: () => ipcRenderer.invoke('projects:preview')
+  preview: () => ipcRenderer.invoke('projects:preview'),
+  saveCopy: () => ipcRenderer.invoke('projects:save-copy')
 })

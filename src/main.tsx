@@ -13,7 +13,7 @@ import './style.css'
 
 
 const logo = './logo.png'
-const downloadUrl = import.meta.env.VITE_WINDOWS_DOWNLOAD_URL || (__LOCAL_WINDOWS_DOWNLOAD__ ? './downloads/Lone-X-Windows.zip' : 'https://github.com/Raju2728/Lone-X/releases/download/desktop-preview/Lone-X-Windows-Theme-Update.zip')
+const downloadUrl = import.meta.env.VITE_WINDOWS_DOWNLOAD_URL || (__LOCAL_WINDOWS_DOWNLOAD__ ? './downloads/Lone-X-Windows.zip' : 'https://github.com/Raju2728/Lone-X/releases/download/desktop-preview/Lone-X-Windows.zip')
 const desktop = location.protocol === 'file:'
 const pages = [
   { name: 'Overview', icon: LayoutDashboard, detail: 'Your Windows agent workspace at a glance.' },

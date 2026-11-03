@@ -45,7 +45,7 @@ function App() {
   const [page, setPage] = useState<(typeof pages)[number]>(pages[0])
   const reduceMotion = useReducedMotion()
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
-  const themeButton = <SquishSwitch ariaLabel="Light theme" thumbContent={theme === 'light' ? <Sun size={14} /> : <Moon size={14} />} checked={theme === 'light'} onChange={checked => setTheme(checked ? 'light' : 'dark')} width={48} height={28} trackColor="var(--line)" trackOnColor="var(--accent)" thumbColor="var(--text)" thumbOnColor="var(--button-text)" />
+  const themeButton = <SquishSwitch ariaLabel="Light theme" thumbContent={theme === 'light' ? <Sun size={14} /> : <Moon size={14} />} checked={theme === 'light'} onChange={checked => setTheme(checked ? 'light' : 'dark')} width={48} height={28} trackColor="var(--line)" trackOnColor="var(--accent)" thumbColor="var(--text)" thumbOnColor="var(--text)" />
   const brand = <span className="brand"><img src={logo} alt="" /> Lone X</span>
 
   if (desktop) {

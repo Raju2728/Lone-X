@@ -12,6 +12,7 @@ From a Windows x64 checkout with Electron installed, run `pwsh -File scripts/pac
 
 ## Hosting
 
-Publish the ZIP as a GitHub prerelease asset. Import the public repository into Vercel and set `VITE_DOWNLOAD_URL` to the public release asset URL. The frontend builds to `dist`.
+Publish the ZIP as a GitHub prerelease asset. Import the public repository into Vercel and optionally set `VITE_WINDOWS_DOWNLOAD_URL` to override the public release asset URL. The frontend builds to `dist`.
 
 Deploy the backend to Railway when the backend service is implemented. Configure database credentials as server-side Railway variables. Use `1.0.0` for the completed release.
+

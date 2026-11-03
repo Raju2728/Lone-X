@@ -54,11 +54,11 @@ function App() {
       <aside className="rail">
         <div className="rail-brand">{brand}<span>DESKTOP AGENT</span></div>
         <p className="eyebrow">WORKSPACE</p>
-        <nav aria-label="Workspace">{pages.slice(0, 2).map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name === 'AI workspace' ? 'AI Workshop' : item.name}</button>)}</nav>
+        <nav aria-label="Workspace">{pages.slice(0, 2).map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name === 'AI workspace' ? 'Chat' : item.name}</button>)}</nav>
         <button className="rail-settings" aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" />Settings</button>
         <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div>{themeButton}</div>
       </aside>
-      <main className="work">
+      <main className={page.name === 'AI workspace' ? 'work work-chat' : 'work'}>
         <div className="work-content">
           {page.name === 'AI workspace' ? null : page.name === 'Overview' ? <>
             <section className="command-banner" aria-labelledby="overview-heading">

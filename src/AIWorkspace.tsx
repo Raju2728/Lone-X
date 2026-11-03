@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Cpu, MessageSquare, Plus, Radio, UserRound } from 'lucide-react'
+import { Cpu, MessageSquare, Plus, Radio, Trash2, UserRound } from 'lucide-react'
 import LatticeLoader from './react-bits/LatticeLoader'
 import StatusMark from './react-bits/StatusMark'
 import PromptBar from './react-bits/PromptBar'
@@ -15,6 +15,7 @@ declare global {
       models: () => Promise<string[]>
       send: (input: { model: string; text: string; chatId: string }) => Promise<Message[] | null>
       conversations: () => Promise<Conversation[]>
+      deleteChat: (id: string) => Promise<Conversation[]>
       stop: () => Promise<void>
       onDelta: (callback: (delta: string) => void) => () => void
     }
@@ -26,6 +27,7 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
   const [chatId, setChatId] = useState(() => localStorage.getItem('lone-x-current-chat') ?? 'default')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
+  const [deleting, setDeleting] = useState(false)
   const [pending, setPending] = useState('')
   const [response, setResponse] = useState('')
   const [error, setError] = useState('')
@@ -53,9 +55,9 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     return () => { mounted = false; unsubscribe() }
   }, [api, chatId])
 
-  function openChat(id: string) {
+  function openChat(id: string, discardDraft = false) {
     if (pending || id === chatId) return
-    localStorage.setItem('lone-x-draft-' + chatId, draft)
+    if (!discardDraft) localStorage.setItem('lone-x-draft-' + chatId, draft)
     const nextDraft = localStorage.getItem('lone-x-draft-' + id) ?? ''
     localStorage.setItem('lone-x-current-chat', id)
     followLatest.current = true
@@ -67,9 +69,25 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     setChatId(id)
   }
 
+  async function removeChat(chat: Conversation) {
+    if (pending || deleting || !window.confirm('Delete this saved chat and all its messages?')) return
+    setDeleting(true)
+    setError('')
+    try {
+      const remaining = await api.deleteChat(chat.id)
+      setConversations(remaining)
+      localStorage.removeItem('lone-x-draft-' + chat.id)
+      if (chat.id === chatId) openChat(remaining[0]?.id ?? crypto.randomUUID(), true)
+    } catch {
+      setError('Could not delete the chat. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   async function send(prompt: string) {
     const text = prompt.trim()
-    if (!ready || !text || !model.trim() || pending) return
+    if (deleting || !ready || !text || !model.trim() || pending) return
     followLatest.current = true
     setResponseSaved(false)
     setPending(text)
@@ -95,7 +113,7 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
   return <section className="ai-console" aria-label="AI conversation">
     <div className="ai-console-bar">
       <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · Ollama on this PC</small></div></div>
-      <button className="provider-button ai-new-chat" type="button" disabled={!!pending} onClick={() => openChat(crypto.randomUUID())}><Plus size={16} aria-hidden="true" />New chat</button>
+      <button className="provider-button ai-new-chat" type="button" disabled={!!pending || deleting} onClick={() => openChat(crypto.randomUUID())}><Plus size={16} aria-hidden="true" />New chat</button>
     </div>
 
     <div className="ai-workbench">
@@ -103,8 +121,11 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
         <h2>Chats</h2>
         {conversations.length === 0 && <small>Saved chats will appear here.</small>}
         <ul>{conversations.map(chat => <li key={chat.id}>
-          <button title={chat.title} aria-current={chat.id === chatId ? 'true' : undefined} disabled={!!pending} onClick={() => openChat(chat.id)}>
+          <button title={chat.title} aria-current={chat.id === chatId ? 'true' : undefined} disabled={!!pending || deleting} onClick={() => openChat(chat.id)}>
             <MessageSquare size={14} aria-hidden="true" /><span>{chat.title}</span>
+          </button>
+          <button className="ai-chat-delete" type="button" aria-label={'Delete chat: ' + chat.title} title="Delete chat" disabled={!!pending || deleting} onClick={() => void removeChat(chat)}>
+            <Trash2 size={14} aria-hidden="true" />
           </button>
         </li>)}</ul>
       </aside>
@@ -133,14 +154,14 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     </div>
 
     <div className="ai-compose">
-      <PromptBar value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready}
+      <PromptBar value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready || deleting}
         onSend={text => void send(text)} onStop={() => void api.stop().catch(() => setError('Could not stop the response.'))}
         sources={[]} commands={[]} models={[]} efforts={[]}
         placeholder="Ask Raju…" background="var(--bg)" color="var(--text)" menuBackground="var(--surface)" sparkColor="var(--accent)" />
       <div className="ai-compose-bar">
         {responseSaved && !draft && !pending
           ? <StatusMark status="done" label="Response saved locally" doneColor="var(--accent)" size={16} fontSize={12} />
-          : <small>{draft && !pending ? 'Draft saved locally' : 'Enter to send · Shift+Enter for a new line'}</small>}
+          : draft && !pending ? <small>Draft saved locally</small> : null}
       </div>
       {error && <p className="chat-error" role="alert">{error}</p>}
     </div>

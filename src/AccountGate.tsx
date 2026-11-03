@@ -31,6 +31,26 @@ export default function AccountGate({ children }: { children: ReactNode }) {
     }).catch(() => setError('Could not load the local account. Restart Lone X and try again.'))
   }, [api])
 
+  useEffect(() => {
+    if (mode !== 'open') return
+    let current = true
+    function checkSession() {
+      api.status().then(status => {
+        if (current && !status.signedIn) {
+          setMessage('Your session expired. Sign in again to continue.')
+          setMode('login')
+        }
+      }).catch(() => {})
+    }
+    window.addEventListener('focus', checkSession)
+    const timer = window.setInterval(checkSession, 60000)
+    return () => {
+      current = false
+      window.removeEventListener('focus', checkSession)
+      window.clearInterval(timer)
+    }
+  }, [api, mode])
+
   async function perform(action: () => Promise<void>) {
     setPending(true)
     setError('')

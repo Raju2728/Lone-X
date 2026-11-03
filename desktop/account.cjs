@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron')
+const { ipcMain, safeStorage } = require('electron')
 const { DatabaseSync } = require('node:sqlite')
 const { randomBytes, randomInt, scryptSync, timingSafeEqual } = require('node:crypto')
 const { fileURLToPath } = require('node:url')
@@ -14,7 +14,29 @@ function registerAccount(app, rendererPath) {
   try { revision = JSON.parse(readFileSync(path.join(__dirname, '../build-info.json'), 'utf8')).revision } catch {}
   let checking = false
   const read = db.prepare('SELECT email, salt, hash FROM account WHERE id = 1')
-  const sessions = new WeakSet()
+  const sessionDuration = 3 * 24 * 60 * 60 * 1000
+  db.exec('CREATE TABLE IF NOT EXISTS login_session (id INTEGER PRIMARY KEY CHECK (id = 1), encrypted BLOB NOT NULL)')
+  const clearSession = db.prepare('DELETE FROM login_session WHERE id = 1')
+  let expiresAt = 0
+  const saved = db.prepare('SELECT encrypted FROM login_session WHERE id = 1').get()
+  if (saved && read.get() && safeStorage.isEncryptionAvailable()) {
+    try {
+      const expiry = Number(safeStorage.decryptString(Buffer.from(saved.encrypted)))
+      const now = Date.now()
+      if (Number.isSafeInteger(expiry) && expiry > now && expiry <= now + sessionDuration) expiresAt = expiry
+    } catch {
+      // Invalid session data requires a new sign-in.
+    }
+  }
+  if (!expiresAt) clearSession.run()
+
+  function beginSession() {
+    expiresAt = Date.now() + sessionDuration
+    if (safeStorage.isEncryptionAvailable()) {
+      const encrypted = safeStorage.encryptString(String(expiresAt))
+      db.prepare('INSERT OR REPLACE INTO login_session VALUES (1, ?)').run(encrypted)
+    }
+  }
   let reset = null
   let nextAttempt = 0
   let nextReset = 0
@@ -89,12 +111,12 @@ function registerAccount(app, rendererPath) {
     return [salt, derive(password, salt).toString('hex')]
   }
 
-  handle('status', sender => ({ exists: !!read.get(), signedIn: sessions.has(sender), emailReady: !!smtp }))
-  handle('create', async (sender, input) => {
+  handle('status', () => ({ exists: !!read.get(), signedIn: expiresAt > Date.now(), emailReady: !!smtp }))
+  handle('create', async (_sender, input) => {
     const { email, password } = credentials(input)
     if (read.get()) throw new Error('This Windows profile already has a Lone X account.')
     db.prepare('INSERT INTO account VALUES (1, ?, ?, ?)').run(email, ...newPassword(password))
-    sessions.add(sender)
+    beginSession()
     void notifyUpdate(email)
     if (!smtp) return { emailSent: false }
     try {
@@ -105,7 +127,7 @@ function registerAccount(app, rendererPath) {
     }
   })
 
-  handle('login', (sender, input) => {
+  handle('login', (_sender, input) => {
     const { email, password } = credentials(input)
     if (Date.now() < nextAttempt) throw new Error('Wait a moment before trying again.')
     nextAttempt = Date.now() + 1000
@@ -113,7 +135,7 @@ function registerAccount(app, rendererPath) {
     if (!account || account.email !== email || !timingSafeEqual(derive(password, account.salt), Buffer.from(account.hash, 'hex'))) {
       throw new Error('Email or password is incorrect.')
     }
-    sessions.add(sender)
+    beginSession()
     void notifyUpdate(email)
   })
 
@@ -137,12 +159,14 @@ function registerAccount(app, rendererPath) {
     }
     reset.attempts--
     if (input.code !== reset.code) throw new Error('Incorrect reset code.')
+    clearSession.run()
+    expiresAt = 0
     db.prepare('UPDATE account SET salt = ?, hash = ? WHERE id = 1').run(...newPassword(password))
     reset = null
   })
 
-  return sender => {
-    if (!sessions.has(sender)) throw new Error('Sign in to Lone X first.')
+  return () => {
+    if (expiresAt <= Date.now()) throw new Error('Sign in to Lone X first.')
   }
 }
 

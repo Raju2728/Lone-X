@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('loneXAI', {
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),
   conversations: () => ipcRenderer.invoke('ai:conversations'),
+  deleteChat: id => ipcRenderer.invoke('ai:delete-chat', id),
   stop: () => ipcRenderer.invoke('ai:stop'),
   send: input => ipcRenderer.invoke('ai:send', input),
   onDelta: callback => {

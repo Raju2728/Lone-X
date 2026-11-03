@@ -683,7 +683,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
         onPointerDown={e => {
           if (e.target === e.currentTarget || e.target === inputRef.current) closeMenus();
         }}
-        onClick={focusInput}
+        onClick={event => { if (event.target === event.currentTarget) focusInput(); }}
       >
         <canvas ref={sparkRef} className="prompt-bar__sparks" aria-hidden="true" />
         {attachments.length > 0 ? (
@@ -814,7 +814,6 @@ const PromptBar: React.FC<PromptBarProps> = ({
             aria-label={busy ? 'Stop' : 'Send'}
             data-armed={armed ? '' : undefined}
             data-pressed={pressed ? '' : undefined}
-            onMouseDown={e => e.preventDefault()}
             onPointerDown={down}
             onPointerUp={up}
             onPointerCancel={up}

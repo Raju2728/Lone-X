@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict')
-const { app, BrowserWindow, dialog } = require('electron')
+const { app, BrowserWindow, dialog, safeStorage } = require('electron')
 
 const profile = require('node:fs').mkdtempSync(require('node:path').join(__dirname, '../node_modules/.lone-x-smoke-'))
 app.setPath('userData', profile)
@@ -146,10 +146,20 @@ app.whenReady().then(async () => {
         Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value').set.call(element, text)
         element.dispatchEvent(new Event('input', { bubbles: true }))
       }
+      const initialHeight = draft.getBoundingClientRect().height
+      fill(draft, ['one', 'two', 'three'].join(String.fromCharCode(10)))
+      await waitFor(() => draft.getBoundingClientRect().height > initialHeight)
+      const promptBounds = draft.getBoundingClientRect()
+      const sendBounds = workspace.querySelector('.prompt-bar__send').getBoundingClientRect()
+      if (sendBounds.left < promptBounds.right || sendBounds.top >= promptBounds.bottom) throw new Error('Send button is outside the prompt row')
+      if (getComputedStyle(draft).borderTopWidth !== '0px') throw new Error('Prompt border is visible')
       const send = async text => {
         fill(draft, text)
         const button = () => buttons().find(item => item.getAttribute('aria-label') === 'Send')
         await waitFor(() => button() && !button().disabled)
+        const bounds = button().getBoundingClientRect()
+        const target = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+        if (!button().contains(target)) throw new Error('Send arrow is not clickable at its visible position')
         button().click()
       }
       await send('Local instruction')
@@ -169,6 +179,13 @@ app.whenReady().then(async () => {
       if (!older) throw new Error('Saved chat is missing')
       older.click()
       await waitFor(() => workspace.querySelector('.ai-transcript').textContent.includes('Smoke response'))
+      window.confirm = () => false
+      const remove = workspace.querySelector('.ai-chat-delete')
+      remove.click()
+      if (!(await window.loneXAI.history()).length) throw new Error('Cancel deleted the chat')
+      window.confirm = () => true
+      remove.click()
+      await waitFor(() => !workspace.querySelector('.ai-chat-delete'))
       return { retainedDraft, history, newHistory }
     })()
   `)
@@ -184,11 +201,27 @@ app.whenReady().then(async () => {
   const db = new DatabaseSync(require('node:path').join(profile, 'conversation.sqlite'), { readOnly: true })
   try {
     const rows = db.prepare('SELECT role, content FROM messages ORDER BY id').all()
-    assert.deepEqual(rows.map(row => ({ ...row })), chat.history)
+    assert.deepEqual(rows, [])
   } finally {
     db.close()
   }
   console.log('Chat UI Ollama discovery, streaming, retry, and SQLite storage passed.')
+  const account = new DatabaseSync(require('node:path').join(profile, 'account.sqlite'), { readOnly: true })
+  const saved = account.prepare('SELECT encrypted FROM login_session WHERE id = 1').get()
+  account.close()
+  const expiresAt = Number(safeStorage.decryptString(Buffer.from(saved.encrypted)))
+  const remaining = expiresAt - Date.now()
+  assert.ok(remaining > 3 * 86400000 - 60000 && remaining <= 3 * 86400000)
+  const realNow = Date.now
+  try {
+    Date.now = () => expiresAt
+    const status = await window.webContents.executeJavaScript('window.loneXAccount.status()')
+    assert.equal(status.signedIn, false)
+    await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /Sign in/)
+  } finally {
+    Date.now = realNow
+  }
+  console.log('Encrypted three-day session and expiry enforcement passed.')
   console.log('Desktop loaded, theme toggled, primary navigation worked, and renderer Node access was absent.')
   app.exit(0)
 }).catch(error => {

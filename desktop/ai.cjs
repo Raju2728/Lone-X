@@ -107,6 +107,12 @@ function registerAI(app, rendererPath, requireAccount) {
     prune()
     return conversations.all()
   })
+  const deleteChat = db.prepare('DELETE FROM messages WHERE chat_id = ?')
+  handle('delete-chat', (_event, id) => {
+    if (active) throw new Error('Wait for the current response.')
+    deleteChat.run(chatId(id))
+    return conversations.all()
+  })
   handle('stop', event => {
     if (active?.sender === event.sender) active.controller.abort()
   })

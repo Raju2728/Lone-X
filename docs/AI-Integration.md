@@ -17,7 +17,7 @@ Chat history expires 30 days after it is saved. Cleanup runs at launch, hourly w
 
 ## Local account and email
 
-The Windows app creates one local email/password account per Electron user data profile. Passwords are salted and hashed. Each new app session requires sign-in.
+The Windows app creates one local email/password account per Electron user data profile. Passwords are salted and hashed. A successful sign-in stays active for three days, including across app restarts. The session expiry is encrypted with Windows protected storage when available. A password reset clears the session.
 
 To enable Nodemailer, set `LONEX_SMTP_HOST`, `LONEX_SMTP_PORT` (defaults to 465), `LONEX_SMTP_USER`, and `LONEX_SMTP_PASSWORD` in the process environment before starting the desktop app. Optionally set `LONEX_SMTP_FROM` to a verified sender. Account creation and password reset emails use that server.
 

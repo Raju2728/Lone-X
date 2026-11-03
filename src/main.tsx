@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowDown, Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Settings, ShieldCheck, Terminal } from 'lucide-react'
+import { ArrowDown, Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import GlareHover from './react-bits/GlareHover'
 import FlipCard from './react-bits/FlipCard'
@@ -45,7 +45,7 @@ function App() {
   const [page, setPage] = useState<(typeof pages)[number]>(pages[0])
   const reduceMotion = useReducedMotion()
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
-  const themeButton = <SquishSwitch ariaLabel="Light theme" checked={theme === 'light'} onChange={checked => setTheme(checked ? 'light' : 'dark')} width={48} height={28} trackColor="var(--line)" trackOnColor="var(--accent)" thumbColor="var(--text)" thumbOnColor="var(--button-text)" />
+  const themeButton = <SquishSwitch ariaLabel="Light theme" thumbContent={theme === 'light' ? <Sun size={14} /> : <Moon size={14} />} checked={theme === 'light'} onChange={checked => setTheme(checked ? 'light' : 'dark')} width={48} height={28} trackColor="var(--line)" trackOnColor="var(--accent)" thumbColor="var(--text)" thumbOnColor="var(--button-text)" />
   const brand = <span className="brand"><img src={logo} alt="" /> Lone X</span>
 
   if (desktop) {
@@ -59,7 +59,7 @@ function App() {
       <main className="work">
         <header className="work-bar">
           <span className="work-path">Workspace <span aria-hidden="true">/</span> <strong>{page.name}</strong></span>
-          <div className="appearance"><span>Light theme</span>{themeButton}</div>
+          {themeButton}
         </header>
         <div className="work-content">
           {page.name === 'Overview' ? <>
@@ -91,7 +91,7 @@ function App() {
             <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
             {page.name === 'AI workspace' && <div className="panel draft-panel"><label htmlFor="draft">Instruction draft</label><textarea id="draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Describe what you want to do…" />{draft ? <ThoughtLine working={false} label="Draft saved locally" doneLabel="Draft saved locally" steps={draftSteps} showTimer={false} glyph="dot" glyphColor="var(--accent)" shimmer={false} /> : <small>Sending will be available when an AI provider is connected.</small>}</div>}
             {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
-            {page.name === 'Settings' && <div className="panel settings"><span>Appearance · {theme === 'dark' ? 'Dark' : 'Light'}</span>{themeButton}</div>}
+            {page.name === 'Settings' && <div className="panel settings"><span>Appearance</span>{themeButton}</div>}
           </>}
         </div>
       </main>

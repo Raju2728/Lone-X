@@ -7,6 +7,7 @@ import React, {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
   type PointerEvent
 } from 'react';
 import { animate, motion, useMotionValue, useReducedMotion, useSpring, useTransform, useVelocity } from 'framer-motion';
@@ -20,6 +21,7 @@ export interface SquishSwitchProps {
   disabled?: boolean;
   trackColor?: string;
   trackOnColor?: string;
+  thumbContent?: ReactNode;
   thumbColor?: string;
   thumbOnColor?: string;
   width?: number;
@@ -59,6 +61,7 @@ const SquishSwitch: React.FC<SquishSwitchProps> = ({
   disabled = false,
   trackColor = '#27272a',
   trackOnColor = '#f5f5f5',
+  thumbContent,
   thumbColor = '',
   thumbOnColor = '',
   width = 76,
@@ -231,7 +234,7 @@ const SquishSwitch: React.FC<SquishSwitchProps> = ({
         onClick={click}
       >
         <span ref={trackRef} className="squish-switch__track">
-          <motion.span className="squish-switch__thumb" aria-hidden="true" style={{ x, scaleX, scaleY }} />
+          <motion.span className="squish-switch__thumb" aria-hidden="true" style={{ x, scaleX, scaleY }}>{thumbContent}</motion.span>
         </span>
       </button>
       {label ? (
@@ -244,5 +247,3 @@ const SquishSwitch: React.FC<SquishSwitchProps> = ({
 };
 
 export default SquishSwitch;
-
-

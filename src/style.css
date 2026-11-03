@@ -70,7 +70,7 @@ button.card:hover { border-color: var(--accent); }
 .rail-status strong { color: var(--text); }
 .work { min-width: 0; }
 .work-bar { min-height: 62px; padding: 0 clamp(18px, 3vw, 42px); border-bottom: 1px solid var(--line); background: var(--surface); font-size: 13px; }
-.work-path, .appearance { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.work-path { display: flex; align-items: center; gap: 10px; color: var(--muted); }
 .work-path strong { color: var(--text); }
 .work-content { max-width: 1250px; padding: 26px clamp(18px, 3vw, 42px) 36px; margin-inline: auto; }
 .command-banner { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(145px, .8fr); align-items: stretch; min-height: 270px; overflow: hidden; border: 1px solid #304b65; border-radius: 13px; color: #eef5fc; background: #0d1a29; }
@@ -155,3 +155,6 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .logo-purpose strong { font-size: clamp(21px, 4vw, 48px); font-weight: 750; line-height: 1.05; letter-spacing: -.04em; }
 .logo-purpose p { color: var(--muted); font-size: clamp(13px, 1.5vw, 18px); }
 .top nav { flex-wrap: wrap; justify-content: flex-end; }
+
+.squish-switch__thumb { display: grid; place-items: center; color: var(--bg); }
+.squish-switch[data-on] .squish-switch__thumb { color: var(--surface); }

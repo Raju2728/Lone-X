@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('loneXAI', {
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),
+  conversations: () => ipcRenderer.invoke('ai:conversations'),
+  stop: () => ipcRenderer.invoke('ai:stop'),
   send: input => ipcRenderer.invoke('ai:send', input),
   onDelta: callback => {
     const listener = (_event, delta) => callback(delta)

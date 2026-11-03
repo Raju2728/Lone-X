@@ -27,6 +27,31 @@ try {
         Copy-Item public/logo.png -Destination $assets.FullName
         '{"name":"lone-x","productName":"Lone X","main":"desktop/main.cjs"}' | Set-Content -Encoding ascii (Join-Path $app.FullName 'package.json')
 
+        $ollamaSource = if ($env:LONEX_OLLAMA_RUNTIME_DIR) { $env:LONEX_OLLAMA_RUNTIME_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs/Ollama' }
+        $modelSource = if ($env:OLLAMA_MODELS) { $env:OLLAMA_MODELS } else { Join-Path $env:USERPROFILE '.ollama/models' }
+        $manifestPath = 'manifests/registry.ollama.ai/library/qwen2.5/0.5b'
+        $manifestSource = Join-Path $modelSource $manifestPath
+        $manifest = Get-Content -Raw -LiteralPath $manifestSource | ConvertFrom-Json
+        $bundled = New-Item -ItemType Directory (Join-Path $app.FullName 'ollama')
+        Copy-Item -LiteralPath (Join-Path $ollamaSource 'ollama.exe') -Destination $bundled.FullName
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Ollama-LICENSE.txt') -Destination $bundled.FullName
+        $cpuLibs = New-Item -ItemType Directory -Force (Join-Path $bundled.FullName 'lib/ollama')
+        Get-ChildItem -LiteralPath (Join-Path $ollamaSource 'lib/ollama') -File | Copy-Item -Destination $cpuLibs.FullName
+        $destination = Join-Path $bundled.FullName 'models'
+        $manifestTarget = Join-Path $destination $manifestPath
+        New-Item -ItemType Directory -Force (Split-Path -Parent $manifestTarget) | Out-Null
+        Copy-Item -LiteralPath $manifestSource -Destination $manifestTarget
+        $blobs = New-Item -ItemType Directory (Join-Path $destination 'blobs')
+        foreach ($layer in (@($manifest.config) + @($manifest.layers))) {
+            if ($layer.digest -notmatch '^sha256:[0-9a-f]{64}$') { throw 'Invalid Ollama blob digest' }
+            $name = $layer.digest.Replace(':', '-')
+            $source = Join-Path $modelSource "blobs/$name"
+            if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $layer.digest.Substring(7)) {
+                throw "Ollama blob checksum mismatch for $name"
+            }
+            Copy-Item -LiteralPath $source -Destination $blobs.FullName
+        }
+
         $output = New-Item -ItemType Directory -Force public/downloads
         $archive = Join-Path $stage.FullName 'Lone-X-Windows.zip'
         tar.exe -a -cf $archive -C $stage.FullName 'Lone X'

@@ -24,3 +24,9 @@ To enable Nodemailer, set `LONEX_SMTP_HOST`, `LONEX_SMTP_PORT` (defaults to 465)
 Packaged builds can check the GitHub release on sign-in and send one email per detected revision. The canonical ZIP release asset label must be `build:<full git commit SHA>`, matching the revision embedded by the packaging script. The app checks for updates but does not install them.
 
 The chat uses `qwen2.5:0.5b` and displays the assistant as Raju. **New chat** starts an empty thread without carrying over context. Prior threads remain in SQLite until the retention policy removes them.
+
+## Portable Windows ZIP
+
+The ZIP bundles the CPU build of Ollama and the `qwen2.5:0.5b` model. Extract the entire ZIP before launching Lone X. The app starts its bundled Ollama on a private loopback port when chat first needs it. End users can chat offline without installing Ollama separately.
+
+To build the ZIP, install Ollama on the packaging PC and run `ollama pull qwen2.5:0.5b` first. The packaging script copies the CPU runtime, model manifest, and verified blobs. Set `LONEX_OLLAMA_RUNTIME_DIR` and `OLLAMA_MODELS` if their locations differ from the Windows defaults.

@@ -2,6 +2,7 @@ const { DatabaseSync } = require('node:sqlite')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 const { ipcMain } = require('electron')
+const { localRuntime } = require('./ollama-runtime.cjs')
 
 const retentionMs = 30 * 24 * 60 * 60 * 1000
 const ollama = 'http://127.0.0.1:11434'
@@ -19,8 +20,8 @@ async function* readLines(body) {
   if (pending.trim()) yield pending.trimEnd()
 }
 
-async function streamReply(model, messages, onDelta, signal, request = fetch) {
-  const response = await request(ollama + '/api/chat', {
+async function streamReply(model, messages, onDelta, signal, request = fetch, endpoint = ollama) {
+  const response = await request(endpoint + '/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal, redirect: 'error',
     body: JSON.stringify({ model, messages, stream: true, options: { num_predict: 4096 } })
   }).catch(() => { throw new Error('Could not reach Ollama. Start it on this PC and try again.') })
@@ -41,6 +42,7 @@ async function streamReply(model, messages, onDelta, signal, request = fetch) {
 }
 
 function registerAI(app, rendererPath, requireAccount) {
+  const runtime = localRuntime(app)
   const db = new DatabaseSync(path.join(app.getPath('userData'), 'conversation.sqlite'))
   db.exec('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, role TEXT NOT NULL, content TEXT NOT NULL, created_at INTEGER NOT NULL)')
   db.exec('BEGIN IMMEDIATE')
@@ -71,7 +73,15 @@ function registerAI(app, rendererPath, requireAccount) {
   const list = db.prepare('SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id')
   const recent = db.prepare('SELECT role, content FROM (SELECT * FROM messages WHERE chat_id = ? ORDER BY id DESC LIMIT 30) ORDER BY id')
   const insert = db.prepare('INSERT INTO messages(role, content, created_at, chat_id) VALUES (?, ?, ?, ?)')
-  let active = false
+  const conversations = db.prepare(`
+    SELECT first.chat_id AS id, substr(first.content, 1, 100) AS title, last.updated_at AS updatedAt
+    FROM (SELECT chat_id, min(id) AS first_id, max(created_at) AS updated_at
+      FROM messages WHERE role = 'user' GROUP BY chat_id) last
+    JOIN messages first ON first.id = last.first_id
+    ORDER BY last.updated_at DESC, first.id DESC
+  `)
+  let active
+
 
   function handle(channel, action) {
     ipcMain.handle('ai:' + channel, (event, input) => {
@@ -93,9 +103,16 @@ function registerAI(app, rendererPath, requireAccount) {
     prune()
     return list.all(chatId(id))
   })
+  handle('conversations', () => {
+    prune()
+    return conversations.all()
+  })
+  handle('stop', event => {
+    if (active?.sender === event.sender) active.controller.abort()
+  })
   handle('models', async () => {
     try {
-      const response = await fetch(ollama + '/api/tags', { redirect: 'error', signal: AbortSignal.timeout(4000) })
+      const response = await fetch((await runtime()) + '/api/tags', { redirect: 'error', signal: AbortSignal.timeout(4000) })
       if (!response.ok) throw new Error()
       const { models } = await response.json()
       return models.map(model => model.name).filter(name => typeof name === 'string')
@@ -111,14 +128,18 @@ function registerAI(app, rendererPath, requireAccount) {
         typeof text !== 'string' || !text.trim() || text.length > 16000) throw new Error('Enter a model and an instruction of up to 16,000 characters.')
     if (active) throw new Error('Wait for the current response.')
     prune()
-    active = true
+    const controller = new AbortController()
+    active = { sender: event.sender, controller }
     const messages = [...recent.all(id), { role: 'user', content: text }]
     let reply = ''
     try {
+      const endpoint = await runtime()
+      controller.signal.throwIfAborted()
       await streamReply(model.trim(), messages, delta => {
         reply += delta
         if (!event.sender.isDestroyed()) event.sender.send('ai:delta', delta)
-      }, AbortSignal.timeout(180000))
+      }, AbortSignal.any([controller.signal, AbortSignal.timeout(180000)]), fetch, endpoint)
+      controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')
       db.exec('BEGIN')
       try {
@@ -131,8 +152,11 @@ function registerAI(app, rendererPath, requireAccount) {
         throw error
       }
       return list.all(id)
+    } catch (error) {
+      if (controller.signal.aborted) return null
+      throw error
     } finally {
-      active = false
+      active = undefined
     }
   })
 }

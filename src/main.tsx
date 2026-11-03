@@ -56,13 +56,9 @@ function App() {
         <p className="eyebrow">WORKSPACE</p>
         <nav aria-label="Workspace">{pages.slice(0, 2).map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name === 'AI workspace' ? 'AI Workshop' : item.name}</button>)}</nav>
         <button className="rail-settings" aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" />Settings</button>
-        <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div></div>
+        <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div>{themeButton}</div>
       </aside>
       <main className="work">
-        <header className="work-bar">
-          <span className="work-path">Workspace <span aria-hidden="true">/</span> <strong>{page.name}</strong></span>
-          {themeButton}
-        </header>
         <div className="work-content">
           {page.name === 'AI workspace' ? null : page.name === 'Overview' ? <>
             <section className="command-banner" aria-labelledby="overview-heading">
@@ -78,8 +74,9 @@ function App() {
                 <div className="command-orbit">
                   <img src={logo} alt="" />
                   <div className="command-satellites">
-                    <span><Folder size={16} /></span><span><Terminal size={16} /></span>
-                    <span><LayoutDashboard size={16} /></span><span><Settings size={16} /></span>
+                    {[Folder, Terminal, LayoutDashboard, Settings].map((Icon, index) =>
+                      <div className={'command-track track-' + index} key={index}><span><Icon size={16} /></span></div>
+                    )}
                   </div>
                 </div>
                 <span className="command-coordinate">LX / 01</span>
@@ -99,7 +96,6 @@ function App() {
             <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
             {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
             {page.name === 'Settings' && <>
-              <div className="panel settings"><span>Appearance</span>{themeButton}</div>
               <section className="launch-panel" aria-label="Workspace tools">
                 <h2>Workspace tools</h2>
                 {pages.slice(2, 6).map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>

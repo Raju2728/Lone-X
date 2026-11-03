@@ -82,7 +82,7 @@ app.whenReady().then(async () => {
       await wait()
       const initial = heading()
       const start = document.documentElement.dataset.theme
-      document.querySelector('.work [role=switch]').dispatchEvent(
+      document.querySelector('.rail [role=switch]').dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
       )
       await wait()
@@ -91,7 +91,7 @@ app.whenReady().then(async () => {
       for (const button of document.querySelectorAll('aside nav button')) {
         button.click()
         await wait()
-        sections.push(document.querySelector('.work-path strong').textContent)
+        sections.push(document.querySelector('[aria-label="AI conversation"]').closest('[hidden]') ? heading() : 'AI workspace')
       }
       const storedTheme = localStorage.getItem('lone-x-theme')
       return { initial, start, changed, storedTheme, sections, nodeExposed: typeof require !== 'undefined' }
@@ -148,7 +148,7 @@ app.whenReady().then(async () => {
       }
       const send = async text => {
         fill(draft, text)
-        const button = () => buttons().find(item => item.textContent === 'Send instruction')
+        const button = () => buttons().find(item => item.getAttribute('aria-label') === 'Send')
         await waitFor(() => button() && !button().disabled)
         button().click()
       }
@@ -165,6 +165,10 @@ app.whenReady().then(async () => {
       buttons().find(button => button.textContent === 'New chat').click()
       await waitFor(() => workspace.textContent.includes('Start a local conversation'))
       const newHistory = await window.loneXAI.history(localStorage.getItem('lone-x-current-chat'))
+      const older = [...workspace.querySelectorAll('.ai-history button')].find(button => button.textContent === 'Local instruction')
+      if (!older) throw new Error('Saved chat is missing')
+      older.click()
+      await waitFor(() => workspace.querySelector('.ai-transcript').textContent.includes('Smoke response'))
       return { retainedDraft, history, newHistory }
     })()
   `)

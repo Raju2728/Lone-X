@@ -1,6 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, Cpu, Plus, Radio, UserRound } from 'lucide-react'
+import { Cpu, MessageSquare, Plus, Radio, UserRound } from 'lucide-react'
 import LatticeLoader from './react-bits/LatticeLoader'
+import StatusMark from './react-bits/StatusMark'
+import PromptBar from './react-bits/PromptBar'
+
+type Conversation = { id: string; title: string; updatedAt: number }
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -9,7 +13,9 @@ declare global {
     loneXAI: {
       history: (id?: string) => Promise<Message[]>
       models: () => Promise<string[]>
-      send: (input: { model: string; text: string; chatId: string }) => Promise<Message[]>
+      send: (input: { model: string; text: string; chatId: string }) => Promise<Message[] | null>
+      conversations: () => Promise<Conversation[]>
+      stop: () => Promise<void>
       onDelta: (callback: (delta: string) => void) => () => void
     }
   }
@@ -18,11 +24,13 @@ declare global {
 export default function AIWorkspace({ draft, setDraft }: { draft: string; setDraft: (draft: string) => void }) {
   const model = 'qwen2.5:0.5b'
   const [chatId, setChatId] = useState(() => localStorage.getItem('lone-x-current-chat') ?? 'default')
+  const [conversations, setConversations] = useState<Conversation[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [pending, setPending] = useState('')
   const [response, setResponse] = useState('')
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
+  const [responseSaved, setResponseSaved] = useState(false)
   const api = window.loneXAI
   const transcript = useRef<HTMLDivElement>(null)
   const followLatest = useRef(true)
@@ -40,32 +48,40 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
         setReady(true)
       }
     }).catch(() => { if (mounted) setError('Could not load the local conversation.') })
+    api.conversations().then(rows => { if (mounted) setConversations(rows) }).catch(() => { if (mounted) setError('Could not load saved chats.') })
     const unsubscribe = api.onDelta(delta => setResponse(text => text + delta))
     return () => { mounted = false; unsubscribe() }
   }, [api, chatId])
 
-  function newChat() {
-    const id = crypto.randomUUID()
+  function openChat(id: string) {
+    if (pending || id === chatId) return
+    localStorage.setItem('lone-x-draft-' + chatId, draft)
+    const nextDraft = localStorage.getItem('lone-x-draft-' + id) ?? ''
     localStorage.setItem('lone-x-current-chat', id)
     followLatest.current = true
     setReady(false)
+    setResponseSaved(false)
     setError('')
     setMessages([])
-    setDraft('')
+    setDraft(nextDraft)
     setChatId(id)
   }
 
-  async function send() {
-    const text = draft.trim()
+  async function send(prompt: string) {
+    const text = prompt.trim()
     if (!ready || !text || !model.trim() || pending) return
     followLatest.current = true
+    setResponseSaved(false)
     setPending(text)
     setResponse('')
     setError('')
     try {
       const history = await api.send({ model, text, chatId })
+      if (!history) return
       setMessages(history)
       setDraft('')
+      void api.conversations().then(setConversations).catch(() => {})
+      setResponseSaved(true)
     } catch (failure) {
       setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not send the instruction.')
     } finally {
@@ -79,9 +95,20 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
   return <section className="ai-console" aria-label="AI conversation">
     <div className="ai-console-bar">
       <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · Ollama on this PC</small></div></div>
-      <button className="provider-button ai-new-chat" type="button" disabled={!!pending} onClick={newChat}><Plus size={16} aria-hidden="true" />New chat</button>
+      <button className="provider-button ai-new-chat" type="button" disabled={!!pending} onClick={() => openChat(crypto.randomUUID())}><Plus size={16} aria-hidden="true" />New chat</button>
     </div>
 
+    <div className="ai-workbench">
+      <aside className="ai-history" aria-label="Saved chats">
+        <h2>Chats</h2>
+        {conversations.length === 0 && <small>Saved chats will appear here.</small>}
+        <ul>{conversations.map(chat => <li key={chat.id}>
+          <button title={chat.title} aria-current={chat.id === chatId ? 'true' : undefined} disabled={!!pending} onClick={() => openChat(chat.id)}>
+            <MessageSquare size={14} aria-hidden="true" /><span>{chat.title}</span>
+          </button>
+        </li>)}</ul>
+      </aside>
+      <div className="ai-thread">
     <div className="ai-transcript" aria-label="Messages" tabIndex={0} ref={transcript} onScroll={event => {
       const log = event.currentTarget
       followLatest.current = log.scrollHeight - log.scrollTop - log.clientHeight < 72
@@ -105,22 +132,19 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
       })}
     </div>
 
-    <form className="ai-compose" onSubmit={event => { event.preventDefault(); void send() }}>
-      <label htmlFor="draft" className="sr-only">Instruction draft</label>
-      <textarea id="draft" value={draft} maxLength={16000} disabled={!!pending} onChange={event => setDraft(event.target.value)}
-        onKeyDown={event => {
-          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-            event.preventDefault()
-            event.currentTarget.form?.requestSubmit()
-          }
-        }} placeholder="Ask your local model…" />
+    <div className="ai-compose">
+      <PromptBar value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready}
+        onSend={text => void send(text)} onStop={() => void api.stop().catch(() => setError('Could not stop the response.'))}
+        sources={[]} commands={[]} models={[]} efforts={[]}
+        placeholder="Ask Raju…" background="var(--bg)" color="var(--text)" menuBackground="var(--surface)" sparkColor="var(--accent)" />
       <div className="ai-compose-bar">
-        <small>{draft && !pending ? 'Draft saved locally' : 'Enter to send · Shift+Enter for a new line'}</small>
-        <button className="ai-send" disabled={!ready || !!pending || !draft.trim() || !model.trim()}>
-          {pending ? 'Responding…' : 'Send instruction'}<ArrowUp size={16} aria-hidden="true" />
-        </button>
+        {responseSaved && !draft && !pending
+          ? <StatusMark status="done" label="Response saved locally" doneColor="var(--accent)" size={16} fontSize={12} />
+          : <small>{draft && !pending ? 'Draft saved locally' : 'Enter to send · Shift+Enter for a new line'}</small>}
       </div>
       {error && <p className="chat-error" role="alert">{error}</p>}
-    </form>
+    </div>
+      </div>
+    </div>
   </section>
 }

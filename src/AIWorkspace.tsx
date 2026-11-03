@@ -1,33 +1,40 @@
-import { useEffect, useState } from 'react'
-import ThoughtLine from './react-bits/ThoughtLine'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { ArrowUp, Cpu, Plus, Radio, UserRound } from 'lucide-react'
+import LatticeLoader from './react-bits/LatticeLoader'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
 declare global {
   interface Window {
     loneXAI: {
-      history: () => Promise<Message[]>
+      history: (id?: string) => Promise<Message[]>
       models: () => Promise<string[]>
-      send: (input: { model: string; text: string }) => Promise<Message[]>
+      send: (input: { model: string; text: string; chatId: string }) => Promise<Message[]>
       onDelta: (callback: (delta: string) => void) => () => void
     }
   }
 }
 
 export default function AIWorkspace({ draft, setDraft }: { draft: string; setDraft: (draft: string) => void }) {
-  const [model, setModel] = useState(() => localStorage.getItem('lone-x-model-ollama') ?? '')
-  const [models, setModels] = useState<string[]>([])
+  const model = 'qwen2.5:0.5b'
+  const [chatId, setChatId] = useState(() => localStorage.getItem('lone-x-current-chat') ?? 'default')
   const [messages, setMessages] = useState<Message[]>([])
   const [pending, setPending] = useState('')
   const [response, setResponse] = useState('')
   const [error, setError] = useState('')
-  const [discovering, setDiscovering] = useState(false)
   const [ready, setReady] = useState(false)
   const api = window.loneXAI
+  const transcript = useRef<HTMLDivElement>(null)
+  const followLatest = useRef(true)
+
+  useLayoutEffect(() => {
+    const log = transcript.current
+    if (log && followLatest.current) log.scrollTop = log.scrollHeight
+  }, [messages, pending, response])
 
   useEffect(() => {
     let mounted = true
-    api.history().then(history => {
+    api.history(chatId).then(history => {
       if (mounted) {
         setMessages(history)
         setReady(true)
@@ -35,35 +42,28 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     }).catch(() => { if (mounted) setError('Could not load the local conversation.') })
     const unsubscribe = api.onDelta(delta => setResponse(text => text + delta))
     return () => { mounted = false; unsubscribe() }
-  }, [api])
+  }, [api, chatId])
 
-  function changeModel(next: string) {
-    setModel(next)
-    localStorage.setItem('lone-x-model-ollama', next)
-  }
-
-  async function discover() {
-    setDiscovering(true)
+  function newChat() {
+    const id = crypto.randomUUID()
+    localStorage.setItem('lone-x-current-chat', id)
+    followLatest.current = true
+    setReady(false)
     setError('')
-    try {
-      const installed = await api.models()
-      setModels(installed)
-      if (!installed.length) setError('Ollama is running, but no models are installed.')
-    } catch {
-      setError('Ollama is unavailable. Start it locally and refresh the model list.')
-    } finally {
-      setDiscovering(false)
-    }
+    setMessages([])
+    setDraft('')
+    setChatId(id)
   }
 
   async function send() {
     const text = draft.trim()
-    if (!text || !model.trim() || pending) return
+    if (!ready || !text || !model.trim() || pending) return
+    followLatest.current = true
     setPending(text)
     setResponse('')
     setError('')
     try {
-      const history = await api.send({ model, text })
+      const history = await api.send({ model, text, chatId })
       setMessages(history)
       setDraft('')
     } catch (failure) {
@@ -74,27 +74,53 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     }
   }
 
-  return <section className="panel draft-panel" aria-label="AI conversation">
-    <div className="provider-controls">
-      <span>Ollama · Local</span>
-      <label>Model <input value={model} maxLength={200} disabled={!!pending} onChange={event => changeModel(event.target.value)} list="ollama-models" placeholder="Installed model name" /></label>
-      <datalist id="ollama-models">{models.map(name => <option key={name} value={name} />)}</datalist>
-      <button className="provider-button" type="button" disabled={!!pending || discovering} onClick={discover}>{discovering ? 'Checking…' : 'Find models'}</button>
+  const timeline = [...messages, ...(pending ? [{ role: 'user', content: pending }, { role: 'assistant', content: response }] : [])]
+
+  return <section className="ai-console" aria-label="AI conversation">
+    <div className="ai-console-bar">
+      <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · Ollama on this PC</small></div></div>
+      <button className="provider-button ai-new-chat" type="button" disabled={!!pending} onClick={newChat}><Plus size={16} aria-hidden="true" />New chat</button>
     </div>
-    <div className="chat-log" aria-label="Messages">
-      {[...messages, ...(pending ? [{ role: 'user', content: pending }, { role: 'assistant', content: response }] : [])].map((message, index) =>
-        message.content && <div key={index} className={'chat-message chat-' + message.role}><strong>{message.role === 'user' ? 'You' : 'Lone X'}</strong><p>{message.content}</p></div>
-      )}
-      {pending && <ThoughtLine working label={response ? "Streaming response" : "Waiting for Ollama"} glyphColor="var(--accent)" />}
+
+    <div className="ai-transcript" aria-label="Messages" tabIndex={0} ref={transcript} onScroll={event => {
+      const log = event.currentTarget
+      followLatest.current = log.scrollHeight - log.scrollTop - log.clientHeight < 72
+    }}>
+      {!timeline.length && <div className="ai-empty">
+        <img src="./logo.png" alt="" />
+        <h2>Start a local conversation</h2>
+        <p>Ask Raju a question to start chatting.</p>
+      </div>}
+      {timeline.map((message, index) => {
+        const user = message.role === 'user'
+        const streaming = !!pending && index === timeline.length - 1
+        return <article key={index} className={'ai-turn' + (user ? ' ai-turn-user' : '')}>
+          <span className="ai-avatar">{user ? <UserRound size={16} aria-hidden="true" /> : <Cpu size={16} aria-hidden="true" />}</span>
+          <div className="ai-turn-body">
+            <strong>{user ? 'You' : 'Raju'}</strong>
+            {message.content && <p>{message.content}</p>}
+            {streaming && <LatticeLoader label={response ? 'Streaming response' : 'Waiting for Ollama'} color="var(--accent)" />}
+          </div>
+        </article>
+      })}
     </div>
-    <form onSubmit={event => { event.preventDefault(); void send() }}>
-      <label htmlFor="draft">Instruction draft</label>
-      <textarea id="draft" value={draft} maxLength={16000} disabled={!!pending} onChange={event => setDraft(event.target.value)} placeholder="Describe what you want to do…" />
-      <div className="provider-controls">
-        <button className="provider-button" disabled={!ready || !!pending || !draft.trim() || !model.trim()}>{pending ? 'Responding…' : 'Send instruction'}</button>
-        {draft && !pending && <ThoughtLine working={false} label="Draft saved locally" doneLabel="Draft saved locally" showTimer={false} glyph="dot" glyphColor="var(--accent)" shimmer={false} />}
+
+    <form className="ai-compose" onSubmit={event => { event.preventDefault(); void send() }}>
+      <label htmlFor="draft" className="sr-only">Instruction draft</label>
+      <textarea id="draft" value={draft} maxLength={16000} disabled={!!pending} onChange={event => setDraft(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+            event.currentTarget.form?.requestSubmit()
+          }
+        }} placeholder="Ask your local model…" />
+      <div className="ai-compose-bar">
+        <small>{draft && !pending ? 'Draft saved locally' : 'Enter to send · Shift+Enter for a new line'}</small>
+        <button className="ai-send" disabled={!ready || !!pending || !draft.trim() || !model.trim()}>
+          {pending ? 'Responding…' : 'Send instruction'}<ArrowUp size={16} aria-hidden="true" />
+        </button>
       </div>
+      {error && <p className="chat-error" role="alert">{error}</p>}
     </form>
-    {error && <p className="chat-error" role="alert">{error}</p>}
   </section>
 }

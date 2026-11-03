@@ -8,6 +8,7 @@ import LatticeLoader from './react-bits/LatticeLoader'
 import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
 import Projects from './Projects'
+import AccountGate from './AccountGate'
 import TechText from './react-bits/TechText'
 import './style.css'
 
@@ -49,11 +50,12 @@ function App() {
   const brand = <span className="brand"><img src={logo} alt="" /> Lone X</span>
 
   if (desktop) {
-    return <div className="shell">
+    return <AccountGate><div className="shell">
       <aside className="rail">
         <div className="rail-brand">{brand}<span>DESKTOP AGENT</span></div>
         <p className="eyebrow">WORKSPACE</p>
-        <nav aria-label="Workspace">{pages.map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name}</button>)}</nav>
+        <nav aria-label="Workspace">{pages.slice(0, 2).map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name === 'AI workspace' ? 'AI Workshop' : item.name}</button>)}</nav>
+        <button className="rail-settings" aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" />Settings</button>
         <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div></div>
       </aside>
       <main className="work">
@@ -62,7 +64,7 @@ function App() {
           {themeButton}
         </header>
         <div className="work-content">
-          {page.name === 'Overview' ? <>
+          {page.name === 'AI workspace' ? null : page.name === 'Overview' ? <>
             <section className="command-banner" aria-labelledby="overview-heading">
               <div className="command-copy">
                 <p className="eyebrow">LONE X / WINDOWS WORKSPACE</p>
@@ -73,13 +75,19 @@ function App() {
                 </button>
               </div>
               <div className="command-art" aria-hidden="true">
-                <div className="command-orbit"><img src={logo} alt="" /></div>
+                <div className="command-orbit">
+                  <img src={logo} alt="" />
+                  <div className="command-satellites">
+                    <span><Folder size={16} /></span><span><Terminal size={16} /></span>
+                    <span><LayoutDashboard size={16} /></span><span><Settings size={16} /></span>
+                  </div>
+                </div>
                 <span className="command-coordinate">LX / 01</span>
               </div>
             </section>
             <section className="launch-panel" aria-labelledby="launch-heading">
               <h2 id="launch-heading">Quick access</h2>
-              {[pages[2], pages[3], pages[4]].map(item => (
+              {[pages[1], pages[6]].map(item => (
                 <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
                   <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
                   <span><strong>{item.name}</strong><small>{item.detail}</small></span>
@@ -90,13 +98,23 @@ function App() {
           </> : <>
             <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
             {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
-            {page.name === 'Settings' && <div className="panel settings"><span>Appearance</span>{themeButton}</div>}
+            {page.name === 'Settings' && <>
+              <div className="panel settings"><span>Appearance</span>{themeButton}</div>
+              <section className="launch-panel" aria-label="Workspace tools">
+                <h2>Workspace tools</h2>
+                {pages.slice(2, 6).map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
+                  <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
+                  <span><strong>{item.name}</strong><small>{item.detail}</small></span>
+                  <ArrowRight size={16} aria-hidden="true" />
+                </button>)}
+              </section>
+            </>}
           </>}
           <div hidden={page.name !== 'Projects'}><Projects /></div>
           <div hidden={page.name !== 'AI workspace'}><AIWorkspace draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>
-    </div>
+    </div></AccountGate>
   }
 
   return <div className="site">

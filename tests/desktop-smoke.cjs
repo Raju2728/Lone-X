@@ -8,12 +8,19 @@ global.fetch = (url, options) => {
     return Promise.resolve(Response.json({ models: [{ name: 'smoke-model' }] }))
   }
   if (url === 'http://127.0.0.1:11434/api/chat') {
-    if (JSON.parse(options.body).model === 'error-model') return Promise.resolve(new Response('', { status: 404 }))
-    assert.equal(JSON.parse(options.body).model, 'smoke-model')
-    return Promise.resolve(new Response([
-      JSON.stringify({ message: { content: 'Smoke ' } }),
-      JSON.stringify({ message: { content: 'response' }, done: true })
-    ].join('\n')))
+    if (JSON.parse(options.body).messages.at(-1).content === 'Retry this instruction') return Promise.resolve(new Response('', { status: 404 }))
+    assert.equal(JSON.parse(options.body).model, 'qwen2.5:0.5b')
+    const encoder = new TextEncoder()
+    return Promise.resolve(new Response(new ReadableStream({
+      start(controller) {
+        const send = value => controller.enqueue(encoder.encode(JSON.stringify(value) + '\n'))
+        setTimeout(() => send({ message: { content: 'Smoke ' } }), 200)
+        setTimeout(() => {
+          send({ message: { content: 'response' }, done: true })
+          controller.close()
+        }, 600)
+      }
+    })))
   }
   throw new Error('Unexpected provider endpoint in smoke test')
 }
@@ -48,6 +55,26 @@ app.whenReady().then(async () => {
       window.webContents.once('did-fail-load', (_event, _code, description) => reject(new Error(description)))
     })
   }
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /Sign in/)
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      for (let attempt = 0; attempt < 100 && !document.querySelector('.account-panel form'); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      const form = document.querySelector('.account-panel form')
+      for (const [type, value] of [['email', 'raju@example.test'], ['password', 'smoke-password']]) {
+        const input = form.querySelector('input[type=' + type + ']')
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, value)
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      form.requestSubmit()
+      for (let attempt = 0; attempt < 100 && !document.querySelector('.shell'); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      if (!document.querySelector('.shell')) throw new Error('Local account form did not unlock the workspace')
+    })()
+  `)
+  console.log('Local account creation and locked workspace IPC passed.')
   const result = await window.webContents.executeJavaScript(`
     (async () => {
       const heading = () => document.querySelector('h1')?.textContent
@@ -64,7 +91,7 @@ app.whenReady().then(async () => {
       for (const button of document.querySelectorAll('aside nav button')) {
         button.click()
         await wait()
-        sections.push(heading())
+        sections.push(document.querySelector('.work-path strong').textContent)
       }
       const storedTheme = localStorage.getItem('lone-x-theme')
       return { initial, start, changed, storedTheme, sections, nodeExposed: typeof require !== 'undefined' }
@@ -74,7 +101,7 @@ app.whenReady().then(async () => {
   assert.ok(['light', 'dark'].includes(result.start))
   assert.equal(result.changed, result.start === 'light' ? 'dark' : 'light')
   assert.equal(result.storedTheme, result.changed)
-  assert.deepEqual(result.sections, ['Overview', 'AI workspace', 'Projects', 'Task monitor', 'Terminal', 'Activity', 'Settings'])
+  assert.deepEqual(result.sections, ['Overview', 'AI workspace'])
   assert.equal(result.nodeExposed, false)
   const project = await window.webContents.executeJavaScript(`
     (async () => ({
@@ -114,31 +141,34 @@ app.whenReady().then(async () => {
       await waitFor(() => !document.querySelector('#draft').closest('[hidden]'))
       const workspace = document.querySelector('[aria-label="AI conversation"]')
       const buttons = () => [...workspace.querySelectorAll('button')]
-      const input = workspace.querySelector('input')
       const draft = workspace.querySelector('textarea')
       const fill = (element, text) => {
         Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value').set.call(element, text)
         element.dispatchEvent(new Event('input', { bubbles: true }))
       }
-      const send = async (model, text) => {
-        fill(input, model)
+      const send = async text => {
         fill(draft, text)
         const button = () => buttons().find(item => item.textContent === 'Send instruction')
         await waitFor(() => button() && !button().disabled)
         button().click()
       }
-      buttons().find(button => button.textContent === 'Find models').click()
-      await waitFor(() => workspace.querySelector('datalist option[value="smoke-model"]'))
-      await send('smoke-model', 'Local instruction')
+      await send('Local instruction')
+      await waitFor(() => workspace.textContent.includes('Waiting for Ollama'))
+      await waitFor(() => workspace.textContent.includes('Streaming response'))
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
-      await send('error-model', 'Retry this instruction')
+      await send('Retry this instruction')
       await waitFor(() => workspace.querySelector('[role=alert]')?.textContent.includes('HTTP 404'))
       const retainedDraft = draft.value
-      await send('smoke-model', 'Local retry')
+      await send('Local retry')
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
-      return { retainedDraft, history: await window.loneXAI.history() }
+      const history = await window.loneXAI.history()
+      buttons().find(button => button.textContent === 'New chat').click()
+      await waitFor(() => workspace.textContent.includes('Start a local conversation'))
+      const newHistory = await window.loneXAI.history(localStorage.getItem('lone-x-current-chat'))
+      return { retainedDraft, history, newHistory }
     })()
   `)
+  assert.deepEqual(chat.newHistory, [])
   assert.equal(chat.retainedDraft, 'Retry this instruction')
   assert.deepEqual(chat.history, [
     { role: 'user', content: 'Local instruction' },
@@ -155,7 +185,7 @@ app.whenReady().then(async () => {
     db.close()
   }
   console.log('Chat UI Ollama discovery, streaming, retry, and SQLite storage passed.')
-  console.log('Desktop loaded, theme toggled, seven navigation targets worked, and renderer Node access was absent.')
+  console.log('Desktop loaded, theme toggled, primary navigation worked, and renderer Node access was absent.')
   app.exit(0)
 }).catch(error => {
   console.error(error)

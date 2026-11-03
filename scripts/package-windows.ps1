@@ -15,6 +15,12 @@ try {
         Rename-Item -LiteralPath (Join-Path $bundle.FullName 'electron.exe') -NewName 'Lone X.exe'
         $app = New-Item -ItemType Directory (Join-Path $bundle.FullName 'resources/app')
         Copy-Item desktop -Destination $app.FullName -Recurse
+        $dependencies = New-Item -ItemType Directory (Join-Path $app.FullName 'node_modules')
+        Copy-Item node_modules/nodemailer -Destination $dependencies.FullName -Recurse
+        $revision = git rev-parse HEAD
+        if ($LASTEXITCODE -eq 0 -and $revision -match '^[a-f0-9]{40}$') {
+            @{ revision = $revision } | ConvertTo-Json -Compress | Set-Content -Encoding ascii (Join-Path $app.FullName 'build-info.json')
+        }
         $web = New-Item -ItemType Directory (Join-Path $app.FullName 'dist')
         Get-ChildItem dist | Where-Object Name -ne 'downloads' | Copy-Item -Destination $web.FullName -Recurse
         $assets = New-Item -ItemType Directory (Join-Path $app.FullName 'public')

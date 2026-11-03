@@ -40,7 +40,7 @@ async function streamReply(model, messages, onDelta, signal, request = fetch) {
   if (!complete) throw new Error('The response stream ended before completion.')
 }
 
-function registerAI(app, rendererPath) {
+function registerAI(app, rendererPath, requireAccount) {
   const db = new DatabaseSync(path.join(app.getPath('userData'), 'conversation.sqlite'))
   db.exec('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, role TEXT NOT NULL, content TEXT NOT NULL, created_at INTEGER NOT NULL)')
   db.exec('BEGIN IMMEDIATE')
@@ -48,6 +48,9 @@ function registerAI(app, rendererPath) {
     if (!db.prepare('PRAGMA table_info(messages)').all().some(column => column.name === 'created_at')) {
       db.exec('ALTER TABLE messages ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0')
       db.prepare('UPDATE messages SET created_at = ?').run(Date.now())
+    }
+    if (!db.prepare('PRAGMA table_info(messages)').all().some(column => column.name === 'chat_id')) {
+      db.exec("ALTER TABLE messages ADD COLUMN chat_id TEXT NOT NULL DEFAULT 'default'")
     }
     db.exec('CREATE INDEX IF NOT EXISTS messages_created_at ON messages(created_at)')
     db.exec('COMMIT')
@@ -65,9 +68,9 @@ function registerAI(app, rendererPath) {
     clearInterval(cleanup)
   })
 
-  const list = db.prepare('SELECT role, content FROM messages ORDER BY id')
-  const recent = db.prepare('SELECT role, content FROM (SELECT * FROM messages ORDER BY id DESC LIMIT 30) ORDER BY id')
-  const insert = db.prepare('INSERT INTO messages(role, content, created_at) VALUES (?, ?, ?)')
+  const list = db.prepare('SELECT role, content FROM messages WHERE chat_id = ? ORDER BY id')
+  const recent = db.prepare('SELECT role, content FROM (SELECT * FROM messages WHERE chat_id = ? ORDER BY id DESC LIMIT 30) ORDER BY id')
+  const insert = db.prepare('INSERT INTO messages(role, content, created_at, chat_id) VALUES (?, ?, ?, ?)')
   let active = false
 
   function handle(channel, action) {
@@ -76,13 +79,19 @@ function registerAI(app, rendererPath) {
       if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
         throw new Error('Invalid AI request origin.')
       }
+      requireAccount(event.sender)
       return action(event, input)
     })
   }
 
-  handle('history', () => {
+  function chatId(id = 'default') {
+    if (typeof id !== 'string' || !/^[a-z0-9-]{1,40}$/.test(id)) throw new Error('Invalid chat ID.')
+    return id
+  }
+
+  handle('history', (_event, id) => {
     prune()
-    return list.all()
+    return list.all(chatId(id))
   })
   handle('models', async () => {
     try {
@@ -97,12 +106,13 @@ function registerAI(app, rendererPath) {
 
   handle('send', async (event, input) => {
     const { model, text } = input ?? {}
+    const id = chatId(input?.chatId)
     if (typeof model !== 'string' || !model.trim() || model.length > 200 ||
         typeof text !== 'string' || !text.trim() || text.length > 16000) throw new Error('Enter a model and an instruction of up to 16,000 characters.')
     if (active) throw new Error('Wait for the current response.')
     prune()
     active = true
-    const messages = [...recent.all(), { role: 'user', content: text }]
+    const messages = [...recent.all(id), { role: 'user', content: text }]
     let reply = ''
     try {
       await streamReply(model.trim(), messages, delta => {
@@ -113,14 +123,14 @@ function registerAI(app, rendererPath) {
       db.exec('BEGIN')
       try {
         const now = Date.now()
-        insert.run('user', text, now)
-        insert.run('assistant', reply, now)
+        insert.run('user', text, now, id)
+        insert.run('assistant', reply, now, id)
         db.exec('COMMIT')
       } catch (error) {
         db.exec('ROLLBACK')
         throw error
       }
-      return list.all()
+      return list.all(id)
     } finally {
       active = false
     }

@@ -3,7 +3,7 @@ const { open, opendir, writeFile } = require('node:fs/promises')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 
-function registerProjects(rendererPath) {
+function registerProjects(rendererPath, requireAccount) {
   const pending = new Set()
   const previews = new WeakMap()
   const handle = (channel, action) => ipcMain.handle(channel, async event => {
@@ -11,6 +11,7 @@ function registerProjects(rendererPath) {
     if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
       throw new Error('Invalid project request origin.')
     }
+    requireAccount(event.sender)
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window || pending.has(window)) return null
     pending.add(window)

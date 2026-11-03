@@ -2,6 +2,7 @@ const { app, BrowserWindow, session } = require('electron')
 const path = require('node:path')
 const { registerAI } = require('./ai.cjs')
 const { registerProjects } = require('./projects.cjs')
+const { registerAccount } = require('./account.cjs')
 const rendererPath = path.join(__dirname, '../dist/index.html')
 
 function createWindow() {
@@ -23,8 +24,9 @@ function createWindow() {
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
   session.defaultSession.setPermissionCheckHandler(() => false)
-  registerAI(app, rendererPath)
-  registerProjects(rendererPath)
+  const requireAccount = registerAccount(app, rendererPath)
+  registerAI(app, rendererPath, requireAccount)
+  registerProjects(rendererPath, requireAccount)
   createWindow()
 })
 app.on('window-all-closed', () => app.quit())

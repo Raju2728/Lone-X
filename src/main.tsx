@@ -7,6 +7,7 @@ import FlipCard from './react-bits/FlipCard'
 import LatticeLoader from './react-bits/LatticeLoader'
 import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
+import Projects from './Projects'
 import TechText from './react-bits/TechText'
 import './style.css'
 
@@ -17,7 +18,7 @@ const desktop = location.protocol === 'file:'
 const pages = [
   { name: 'Overview', icon: LayoutDashboard, detail: 'Your Windows agent workspace at a glance.' },
   { name: 'AI workspace', icon: MessageSquare, detail: 'Draft an instruction for your agent.' },
-  { name: 'Projects', icon: Folder, detail: 'No projects have been connected.' },
+  { name: 'Projects', icon: Folder, detail: 'Choose a local folder to view its files.' },
   { name: 'Task monitor', icon: ListChecks, detail: 'No tasks are running. Task execution becomes available with the local agent.' },
   { name: 'Terminal', icon: Terminal, detail: 'PowerShell execution will be available after the secure local agent is connected.' },
   { name: 'Activity', icon: History, detail: 'Execution history will appear here once the local agent runs tasks.' },
@@ -31,7 +32,7 @@ function usePreference(key: string, initial: string) {
 }
 
 const capabilities = [
-  { icon: Boxes, title: 'Local and cloud AI', detail: 'Choose a provider for your task, with offline support through compatible local runtimes.' },
+  { icon: Boxes, title: 'Local AI with Ollama', detail: 'Use a model installed on your PC for offline chat.' },
   { icon: ShieldCheck, title: 'Approval controls', detail: 'Review sensitive actions and see what the agent attempted in its activity history.' },
   { icon: Terminal, title: 'Development tools', detail: 'Work with project files, PowerShell output, and code changes from one desktop workspace.' },
 ]
@@ -91,6 +92,7 @@ function App() {
             {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
             {page.name === 'Settings' && <div className="panel settings"><span>Appearance</span>{themeButton}</div>}
           </>}
+          <div hidden={page.name !== 'Projects'}><Projects /></div>
           <div hidden={page.name !== 'AI workspace'}><AIWorkspace draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>

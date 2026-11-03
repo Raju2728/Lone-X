@@ -1,34 +1,36 @@
 const assert = require('node:assert/strict')
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, dialog } = require('electron')
 
 const profile = require('node:fs').mkdtempSync(require('node:path').join(__dirname, '../node_modules/.lone-x-smoke-'))
 app.setPath('userData', profile)
-process.env.OPENAI_API_KEY = 'smoke-test-key'
 global.fetch = (url, options) => {
   if (url === 'http://127.0.0.1:11434/api/tags') {
     return Promise.resolve(Response.json({ models: [{ name: 'smoke-model' }] }))
   }
   if (url === 'http://127.0.0.1:11434/api/chat') {
+    if (JSON.parse(options.body).model === 'error-model') return Promise.resolve(new Response('', { status: 404 }))
     assert.equal(JSON.parse(options.body).model, 'smoke-model')
     return Promise.resolve(new Response([
       JSON.stringify({ message: { content: 'Smoke ' } }),
       JSON.stringify({ message: { content: 'response' }, done: true })
     ].join('\n')))
   }
-  if (url === 'https://api.openai.com/v1/responses') {
-    const body = JSON.parse(options.body)
-    assert.equal(body.store, false)
-    assert.equal(options.headers.Authorization, 'Bearer smoke-test-key')
-    if (body.model === 'error-model') return Promise.resolve(new Response('', { status: 404 }))
-    assert.equal(body.model, 'cloud-model')
-    assert.equal(body.input.at(-1).content, 'Cloud instruction')
-    return Promise.resolve(new Response([
-      'data: {"type":"response.output_text.delta","delta":"Cloud response"}',
-      'data: {"type":"response.completed"}'
-    ].join('\n\n')))
-  }
   throw new Error('Unexpected provider endpoint in smoke test')
 }
+const { DatabaseSync } = require('node:sqlite')
+const dbPath = require('node:path').join(profile, 'conversation.sqlite')
+const legacy = new DatabaseSync(dbPath)
+legacy.exec("CREATE TABLE messages (id INTEGER PRIMARY KEY, role TEXT NOT NULL, content TEXT NOT NULL); INSERT INTO messages VALUES (1, 'user', 'Legacy message')")
+legacy.close()
+const projectPath = require('node:path').join(profile, 'sample-project')
+require('node:fs').mkdirSync(projectPath)
+require('node:fs').writeFileSync(require('node:path').join(projectPath, 'README.md'), 'fixture')
+let pickerCount = 0
+dialog.showOpenDialog = async (_window, options) => options.properties.includes('openFile')
+  ? { canceled: false, filePaths: [require('node:path').join(projectPath, 'README.md')] }
+  : ++pickerCount === 1
+  ? { canceled: true, filePaths: [] }
+  : { canceled: false, filePaths: [projectPath] }
 require('../desktop/main.cjs')
 
 setTimeout(() => {
@@ -72,6 +74,27 @@ app.whenReady().then(async () => {
   assert.equal(result.storedTheme, result.changed)
   assert.deepEqual(result.sections, ['Overview', 'AI workspace', 'Projects', 'Task monitor', 'Terminal', 'Activity', 'Settings'])
   assert.equal(result.nodeExposed, false)
+  const project = await window.webContents.executeJavaScript(`
+    (async () => ({
+      canceled: await window.loneXProjects.open(),
+      selected: await window.loneXProjects.open()
+    }))()
+  `)
+  assert.equal(project.canceled, null)
+  assert.deepEqual(project.selected, {
+    name: 'sample-project', entries: [{ name: 'README.md', kind: 'File' }], truncated: false
+  })
+  assert.deepEqual(await window.webContents.executeJavaScript('window.loneXProjects.preview()'), {
+    name: 'README.md', text: 'fixture'
+  })
+  console.log('Project picker cancellation, approved folder listing, and text preview passed.')
+  const retention = new DatabaseSync(dbPath)
+  const migrated = retention.prepare('SELECT created_at FROM messages WHERE id = 1').get()
+  assert.ok(Date.now() - migrated.created_at < 60000)
+  retention.prepare('UPDATE messages SET created_at = ? WHERE id = 1').run(Date.now() - 31 * 24 * 60 * 60 * 1000)
+  retention.close()
+  assert.deepEqual(await window.webContents.executeJavaScript('window.loneXAI.history()'), [])
+  console.log('Legacy history migration and expired message deletion passed.')
   const chat = await window.webContents.executeJavaScript(`
     (async () => {
       const waitFor = async predicate => {
@@ -87,7 +110,6 @@ app.whenReady().then(async () => {
       const buttons = () => [...workspace.querySelectorAll('button')]
       const input = workspace.querySelector('input')
       const draft = workspace.querySelector('textarea')
-      const select = workspace.querySelector('select')
       const fill = (element, text) => {
         Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value').set.call(element, text)
         element.dispatchEvent(new Event('input', { bubbles: true }))
@@ -103,14 +125,11 @@ app.whenReady().then(async () => {
       await waitFor(() => workspace.querySelector('datalist option[value="smoke-model"]'))
       await send('smoke-model', 'Local instruction')
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
-      select.value = 'openai'
-      select.dispatchEvent(new Event('change', { bubbles: true }))
-      await waitFor(() => input.placeholder === 'OpenAI model ID')
       await send('error-model', 'Retry this instruction')
       await waitFor(() => workspace.querySelector('[role=alert]')?.textContent.includes('HTTP 404'))
       const retainedDraft = draft.value
-      await send('cloud-model', 'Cloud instruction')
-      await waitFor(() => workspace.textContent.includes('Cloud response') && !draft.value)
+      await send('smoke-model', 'Local retry')
+      await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
       return { retainedDraft, history: await window.loneXAI.history() }
     })()
   `)
@@ -118,10 +137,10 @@ app.whenReady().then(async () => {
   assert.deepEqual(chat.history, [
     { role: 'user', content: 'Local instruction' },
     { role: 'assistant', content: 'Smoke response' },
-    { role: 'user', content: 'Cloud instruction' },
-    { role: 'assistant', content: 'Cloud response' }
+    { role: 'user', content: 'Local retry' },
+    { role: 'assistant', content: 'Smoke response' }
   ])
-  const { DatabaseSync } = require('node:sqlite')
+
   const db = new DatabaseSync(require('node:path').join(profile, 'conversation.sqlite'), { readOnly: true })
   try {
     const rows = db.prepare('SELECT role, content FROM messages ORDER BY id').all()
@@ -129,7 +148,7 @@ app.whenReady().then(async () => {
   } finally {
     db.close()
   }
-  console.log('Chat UI provider switching, Ollama discovery, both streams, retry, and SQLite storage passed.')
+  console.log('Chat UI Ollama discovery, streaming, retry, and SQLite storage passed.')
   console.log('Desktop loaded, theme toggled, seven navigation targets worked, and renderer Node access was absent.')
   app.exit(0)
 }).catch(error => {

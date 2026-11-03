@@ -8,8 +8,12 @@ TypeScript checking and the Vite production build passed. Headless Edge verified
 
 The Windows Electron smoke test passed for launch, all seven navigation targets, theme switching and persistence, and renderer isolation. Full visual and keyboard accessibility review remains pending. Provider chat, task execution, terminal commands, SQLite persistence, and cloud integration belong to later milestones.
 
+## Milestone 2 — Local AI verified
 
+The approved scope uses Ollama exclusively. Live streaming passed with qwen2.5:0.5b. The Windows smoke test passed for model discovery, chat streaming, retry, and SQLite storage.
 
-## Milestone 2 — In progress
+## Milestone 3 — In progress
 
-The desktop workspace now has provider and model selection, Ollama model discovery, streamed Ollama and OpenAI responses, provider errors, and local SQLite conversation history. The Windows smoke test exercises the chat UI with simulated Ollama and OpenAI responses. It verifies model discovery, provider switching, error handling, draft retention, retry, and SQLite storage in an isolated profile. Live acceptance still requires a running Ollama model and an OpenAI key with access to the selected model.
+Projects can list the immediate entries of a folder selected in the Windows folder picker. The renderer supplies no filesystem path, and the handler checks the caller before opening the picker. The smoke test verifies cancellation and approved folder listing. File reads and writes, PowerShell execution, audit logging, and emergency stop are pending.
+
+The project browser can preview an explicitly selected UTF-8 text file up to 128 KB. Thought Line shows waiting and streaming status in the local chat.

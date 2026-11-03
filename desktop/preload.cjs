@@ -10,3 +10,8 @@ contextBridge.exposeInMainWorld('loneXAI', {
     return () => ipcRenderer.removeListener('ai:delta', listener)
   }
 })
+
+contextBridge.exposeInMainWorld('loneXProjects', {
+  open: () => ipcRenderer.invoke('projects:open'),
+  preview: () => ipcRenderer.invoke('projects:preview')
+})

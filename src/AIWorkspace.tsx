@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react'
-import LatticeLoader from './react-bits/LatticeLoader'
 import ThoughtLine from './react-bits/ThoughtLine'
 
-type Provider = 'ollama' | 'openai'
 type Message = { role: 'user' | 'assistant'; content: string }
 
 declare global {
@@ -10,15 +8,14 @@ declare global {
     loneXAI: {
       history: () => Promise<Message[]>
       models: () => Promise<string[]>
-      send: (input: { provider: Provider; model: string; text: string }) => Promise<Message[]>
+      send: (input: { model: string; text: string }) => Promise<Message[]>
       onDelta: (callback: (delta: string) => void) => () => void
     }
   }
 }
 
 export default function AIWorkspace({ draft, setDraft }: { draft: string; setDraft: (draft: string) => void }) {
-  const [provider, setProvider] = useState<Provider>(() => localStorage.getItem('lone-x-provider') === 'openai' ? 'openai' : 'ollama')
-  const [model, setModel] = useState(() => localStorage.getItem('lone-x-model-' + provider) ?? '')
+  const [model, setModel] = useState(() => localStorage.getItem('lone-x-model-ollama') ?? '')
   const [models, setModels] = useState<string[]>([])
   const [messages, setMessages] = useState<Message[]>([])
   const [pending, setPending] = useState('')
@@ -40,16 +37,9 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     return () => { mounted = false; unsubscribe() }
   }, [api])
 
-  function changeProvider(next: Provider) {
-    localStorage.setItem('lone-x-provider', next)
-    setProvider(next)
-    setModel(localStorage.getItem('lone-x-model-' + next) ?? '')
-    setError('')
-  }
-
   function changeModel(next: string) {
     setModel(next)
-    localStorage.setItem('lone-x-model-' + provider, next)
+    localStorage.setItem('lone-x-model-ollama', next)
   }
 
   async function discover() {
@@ -73,8 +63,8 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
     setResponse('')
     setError('')
     try {
-      const turn = await api.send({ provider, model, text })
-      setMessages(history => [...history, ...turn])
+      const history = await api.send({ model, text })
+      setMessages(history)
       setDraft('')
     } catch (failure) {
       setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not send the instruction.')
@@ -86,21 +76,16 @@ export default function AIWorkspace({ draft, setDraft }: { draft: string; setDra
 
   return <section className="panel draft-panel" aria-label="AI conversation">
     <div className="provider-controls">
-      <label>Provider <select value={provider} disabled={!!pending || discovering} onChange={event => changeProvider(event.target.value as Provider)}>
-        <option value="ollama">Ollama · Local</option><option value="openai">OpenAI · Cloud</option>
-      </select></label>
-      <label>Model <input value={model} maxLength={200} disabled={!!pending} onChange={event => changeModel(event.target.value)} list={provider === 'ollama' ? 'ollama-models' : undefined} placeholder={provider === 'ollama' ? 'Installed model name' : 'OpenAI model ID'} /></label>
-      {provider === 'ollama' && <>
-        <datalist id="ollama-models">{models.map(name => <option key={name} value={name} />)}</datalist>
-        <button className="provider-button" type="button" disabled={!!pending || discovering} onClick={discover}>{discovering ? 'Checking…' : 'Find models'}</button>
-      </>}
+      <span>Ollama · Local</span>
+      <label>Model <input value={model} maxLength={200} disabled={!!pending} onChange={event => changeModel(event.target.value)} list="ollama-models" placeholder="Installed model name" /></label>
+      <datalist id="ollama-models">{models.map(name => <option key={name} value={name} />)}</datalist>
+      <button className="provider-button" type="button" disabled={!!pending || discovering} onClick={discover}>{discovering ? 'Checking…' : 'Find models'}</button>
     </div>
-    {provider === 'openai' && <small>Sending shares this instruction and recent conversation history with OpenAI.</small>}
     <div className="chat-log" aria-label="Messages">
       {[...messages, ...(pending ? [{ role: 'user', content: pending }, { role: 'assistant', content: response }] : [])].map((message, index) =>
         message.content && <div key={index} className={'chat-message chat-' + message.role}><strong>{message.role === 'user' ? 'You' : 'Lone X'}</strong><p>{message.content}</p></div>
       )}
-      {pending && !response && <LatticeLoader label="Waiting for model" color="var(--accent)" />}
+      {pending && <ThoughtLine working label={response ? "Streaming response" : "Waiting for Ollama"} glyphColor="var(--accent)" />}
     </div>
     <form onSubmit={event => { event.preventDefault(); void send() }}>
       <label htmlFor="draft">Instruction draft</label>

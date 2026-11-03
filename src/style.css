@@ -173,3 +173,7 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .chat-message p { white-space: pre-wrap; }
 .chat-error { margin-top: 12px; color: #e06060; }
 :root[data-theme="light"] .chat-error { color: #a32323; }
+
+.project-list { margin-top: 20px; }
+.project-list h2 { font-size: 22px; overflow-wrap: anywhere; }
+.project-list li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }

@@ -290,6 +290,20 @@ app.whenReady().then(async () => {
   dialog.showSaveDialog = originalSaveDialog
   assert.equal(require('node:fs').readFileSync(repairPath, 'utf8'), originalStyles)
   assert.equal(require('node:fs').readFileSync(styles, 'utf8'), 'body { color: red; }')
+  const originalMessageBox = dialog.showMessageBox
+  dialog.showMessageBox = async () => ({ response: 0 })
+  const applyRepair = () => window.webContents.executeJavaScript("window.loneXProjects.applyStarterRepair('styles.css')")
+  assert.equal(await applyRepair(), null)
+  assert.equal(require('node:fs').readFileSync(styles, 'utf8'), 'body { color: red; }')
+  dialog.showMessageBox = async () => ({ response: 1 })
+  require('node:fs').writeFileSync(styles, 'body { color: blue; }')
+  await assert.rejects(applyRepair(), /changed after review/)
+  await window.webContents.executeJavaScript("window.loneXProjects.reviewStarterFile('styles.css')")
+  const applied = await applyRepair()
+  dialog.showMessageBox = originalMessageBox
+  assert.ok(applied.checks.every(check => check.status === 'Passed'))
+  assert.equal(require('node:fs').readFileSync(styles, 'utf8'), originalStyles)
+  assert.equal(require('node:fs').readFileSync(require('node:path').join(projectPath, starter.name, applied.backup), 'utf8'), 'body { color: blue; }')
   require('node:fs').unlinkSync(styles)
   const missing = await window.webContents.executeJavaScript('window.loneXProjects.checkStarter()')
   assert.equal(missing.find(check => check.name === 'styles.css').status, 'Missing')

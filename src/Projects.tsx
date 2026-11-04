@@ -21,6 +21,7 @@ declare global {
       repairStarter: () => Promise<StarterCheck[] | null>
       reviewStarterFile: (name: string) => Promise<StarterReview | null>
       saveStarterRepair: (name: string) => Promise<string | null>
+      applyStarterRepair: (name: string) => Promise<{ backup: string; checks: StarterCheck[] } | null>
       previewStarter: () => Promise<boolean | null>
     }
   }
@@ -90,19 +91,26 @@ export default function Projects() {
     }
   }
 
-  async function reviewStarterFile(name: string, save = false) {
+  async function reviewStarterFile(name: string, action: 'review' | 'copy' | 'restore' = 'review') {
     setPending(true)
     setSaved('')
     setError('')
     try {
-      if (save) {
+      if (action === 'restore') {
+        const result = await window.loneXProjects.applyStarterRepair(name)
+        if (result) {
+          setChecks(result.checks)
+          setReview(null)
+          setSaved('Restored ' + name + '. Original backed up to ' + result.backup)
+        }
+      } else if (action === 'copy') {
         const savedName = await window.loneXProjects.saveStarterRepair(name)
         if (savedName) setSaved('Saved repaired copy as ' + savedName)
       } else {
         setReview(await window.loneXProjects.reviewStarterFile(name))
       }
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not review or save the starter file.')
+      setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not complete the starter repair action.')
     } finally {
       setPending(false)
     }
@@ -187,7 +195,10 @@ export default function Projects() {
           <div className="min-w-0"><strong>Current file</strong><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all">{review.current}</pre></div>
           <div className="min-w-0"><strong>Starter template</strong><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all">{review.expected}</pre></div>
         </div>
-        <button className="provider-button mt-3" disabled={pending} onClick={() => void reviewStarterFile(review.name, true)}>Save repaired copy</button>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <button className="provider-button" disabled={pending} onClick={() => void reviewStarterFile(review.name, 'copy')}>Save repaired copy</button>
+          <button className="provider-button" disabled={pending} onClick={() => void reviewStarterFile(review.name, 'restore')}>Restore template with backup</button>
+        </div>
       </section>}
     </section>}
   </section>

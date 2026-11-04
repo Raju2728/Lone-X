@@ -40,4 +40,6 @@ The generated HTML starter can run in a sandboxed desktop preview without depend
 
 Changed starter files can be compared with the original template and saved as repaired copies at a new path. The smoke test verifies the template bytes and preserves the changed original.
 
-Dependency installation, running projects with scripts, and in-place source repair remain open for this milestone.
+After reviewing a changed starter file, users can confirm an in-place template restoration. Lone X checks that the file still matches the reviewed bytes and saves the original in a backup folder before replacing it. The desktop smoke test verifies cancellation, rejection of stale reviews, and backup contents.
+
+Dependency installation and running projects with scripts remain open for this milestone.

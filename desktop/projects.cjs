@@ -1,5 +1,5 @@
 const { BrowserWindow, dialog, ipcMain } = require('electron')
-const { lstat, mkdtemp, open, opendir, realpath, rm, rmdir, writeFile } = require('node:fs/promises')
+const { lstat, mkdtemp, open, opendir, realpath, rename, rm, rmdir, writeFile } = require('node:fs/promises')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 
@@ -54,6 +54,7 @@ function registerProjects(rendererPath, requireAccount) {
   const pending = new Set()
   const previews = new WeakMap()
   const starters = new WeakMap()
+  const reviews = new WeakMap()
   const handle = (channel, action) => ipcMain.handle(channel, async (event, input) => {
     const url = new URL(event.senderFrame?.url || 'about:blank')
     if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
@@ -90,6 +91,7 @@ function registerProjects(rendererPath, requireAccount) {
     }
     entries.sort((a, b) => a.name.localeCompare(b.name))
     starters.delete(window)
+    reviews.delete(window)
     return { name: path.basename(folder) || folder, entries, truncated }
   })
 
@@ -122,6 +124,7 @@ function registerProjects(rendererPath, requireAccount) {
         try { await file.writeFile(content, 'utf8') } finally { await file.close() }
       }
       starters.set(window, await realpath(folder))
+      reviews.delete(window)
       return { name: path.basename(folder), entries: [...starterFiles.keys()].map(name => ({ name, kind: 'File' })), truncated: false, starter: true }
     } catch (error) {
       await Promise.allSettled(created.map(filename => rm(filename, { force: true })))
@@ -183,13 +186,44 @@ function registerProjects(rendererPath, requireAccount) {
     const { bytes, text: current } = await readTextFile(filename)
     const expected = starterFiles.get(name)
     if (bytes.equals(Buffer.from(expected))) throw new Error('This file already matches the starter template.')
-    return { name, current, expected }
+    return { folder, filename, name, current, expected, bytes }
   }
 
-  handle('projects:review-starter-file', changedStarterFile)
+  handle('projects:review-starter-file', async (window, name) => {
+    const review = await changedStarterFile(window, name)
+    reviews.set(window, review)
+    return { name: review.name, current: review.current, expected: review.expected }
+  })
   handle('projects:save-starter-repair', async (window, name) => {
     const { expected } = await changedStarterFile(window, name)
     return saveNewCopy(window, expected, 'Save repaired starter copy', 'repaired-' + name)
+  })
+
+  handle('projects:apply-starter-repair', async (window, name) => {
+    const review = reviews.get(window)
+    if (!review || review.name !== name || review.folder !== starters.get(window)) throw new Error('Review the changed file first.')
+    const confirm = await dialog.showMessageBox(window, {
+      type: 'warning', buttons: ['Cancel', 'Restore template'], defaultId: 0, cancelId: 0,
+      message: 'Restore the starter template for ' + name + '?',
+      detail: 'Lone X will save the current file in a backup folder inside the starter project before replacing it.'
+    })
+    if (confirm.response !== 1) return null
+    const current = await changedStarterFile(window, name)
+    if (!current.bytes.equals(review.bytes)) throw new Error('The file changed after review. Review it again before restoring.')
+    const backupFolder = await mkdtemp(path.join(current.folder, 'lone-x-repair-'))
+    const backup = path.join(backupFolder, name)
+    const replacement = path.join(backupFolder, 'replacement.tmp')
+    try {
+      await writeFile(backup, current.bytes, { flag: 'wx', flush: true })
+      await writeFile(replacement, current.expected, { flag: 'wx', flush: true })
+      const latest = await changedStarterFile(window, name)
+      if (!latest.bytes.equals(review.bytes)) throw new Error('The file changed during repair. Review it again before restoring.')
+      await rename(replacement, current.filename)
+    } finally {
+      await rm(replacement, { force: true }).catch(() => {})
+    }
+    reviews.delete(window)
+    return { backup: path.join(path.basename(backupFolder), name), checks: await checkStarter(current.folder) }
   })
 
   async function saveNewCopy(window, contents, title, defaultPath) {

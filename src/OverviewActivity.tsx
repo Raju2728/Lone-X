@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
 
 export type Usage = { elapsedMs: number; tokens: number; completed: number; version: string }
+const tokenFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 
 function formatElapsed(elapsedMs: number) {
   const seconds = Math.floor(elapsedMs / 1000)
@@ -34,7 +35,7 @@ export default function OverviewActivity() {
     <h2 id="overview-activity-title">Activity summary</h2>
     <dl>
       <div><dt>Time spent</dt><dd>{usage ? formatElapsed(usage.elapsedMs) : '—'}</dd><small>Processing completed chats</small></div>
-      <div><dt>Tokens used</dt><dd>{usage?.tokens.toLocaleString() ?? '—'}</dd><small>Ollama input and output</small></div>
+      <div><dt>Tokens used</dt><dd title={usage?.tokens.toLocaleString()}>{usage ? tokenFormat.format(usage.tokens) : '—'}</dd><small>Ollama input and output</small></div>
       <div><dt>Work done</dt><dd>{usage?.completed.toLocaleString() ?? '—'}</dd><small>Completed chat replies</small></div>
       <div><dt>Application version</dt><dd>{usage?.version ?? '—'}</dd></div>
       <div className="overview-models"><dt>Models available</dt><dd>

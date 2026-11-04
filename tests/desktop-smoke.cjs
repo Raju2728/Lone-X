@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict')
 const { app, BrowserWindow, dialog, safeStorage } = require('electron')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
 
 const profile = require('node:fs').mkdtempSync(require('node:path').join(__dirname, '../node_modules/.lone-x-smoke-'))
 app.setPath('userData', profile)
@@ -279,6 +280,15 @@ app.whenReady().then(async () => {
   require('node:fs').writeFileSync(styles, 'body { color: red; }')
   const changed = await window.webContents.executeJavaScript('window.loneXProjects.repairStarter()')
   assert.equal(changed.find(check => check.name === 'styles.css').status, 'Changed')
+  assert.deepEqual(await window.webContents.executeJavaScript("window.loneXProjects.reviewStarterFile('styles.css')"), {
+    name: 'styles.css', current: 'body { color: red; }', expected: originalStyles
+  })
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXProjects.reviewStarterFile('../README.md')"), /generated starter/)
+  const repairPath = require('node:path').join(projectPath, 'repaired-styles.css')
+  dialog.showSaveDialog = async () => ({ canceled: false, filePaths: [], filePath: repairPath })
+  assert.equal(await window.webContents.executeJavaScript("window.loneXProjects.saveStarterRepair('styles.css')"), 'repaired-styles.css')
+  dialog.showSaveDialog = originalSaveDialog
+  assert.equal(require('node:fs').readFileSync(repairPath, 'utf8'), originalStyles)
   assert.equal(require('node:fs').readFileSync(styles, 'utf8'), 'body { color: red; }')
   require('node:fs').unlinkSync(styles)
   const missing = await window.webContents.executeJavaScript('window.loneXProjects.checkStarter()')
@@ -368,6 +378,10 @@ app.whenReady().then(async () => {
       HTMLInputElement.prototype.click = originalClick
       await send('Local instruction')
       await waitFor(() => /Thinking|Yosichufying/.test(workspace.querySelector('.ai-thinking')?.textContent ?? ''))
+      const loader = workspace.querySelector('.ai-thinking')
+      const author = loader.parentElement.querySelector('strong').getBoundingClientRect()
+      const loaderBounds = loader.getBoundingClientRect()
+      if (loaderBounds.top < author.bottom || Math.abs(loaderBounds.left - author.left) > 1) throw new Error('Loader is not aligned below Raju')
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
       if (workspace.textContent.includes('Response saved locally')) throw new Error('Response-saved label is still visible')
       await send('Retry this instruction')

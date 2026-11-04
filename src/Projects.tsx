@@ -8,6 +8,7 @@ type Project = {
 }
 
 type StarterCheck = { name: string; status: 'Passed' | 'Missing' | 'Changed' }
+type StarterReview = { name: string; current: string; expected: string }
 
 declare global {
   interface Window {
@@ -18,6 +19,8 @@ declare global {
       createStarter: () => Promise<Project | null>
       checkStarter: () => Promise<StarterCheck[] | null>
       repairStarter: () => Promise<StarterCheck[] | null>
+      reviewStarterFile: (name: string) => Promise<StarterReview | null>
+      saveStarterRepair: (name: string) => Promise<string | null>
       previewStarter: () => Promise<boolean | null>
     }
   }
@@ -31,6 +34,7 @@ export default function Projects() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('')
   const [checks, setChecks] = useState<StarterCheck[]>([])
+  const [review, setReview] = useState<StarterReview | null>(null)
 
   async function open() {
     setPending(true)
@@ -40,6 +44,7 @@ export default function Projects() {
       if (selected) {
         setProject(selected)
         setChecks([])
+        setReview(null)
         setSaved('')
       }
     } catch {
@@ -58,6 +63,7 @@ export default function Projects() {
       if (created) {
         setProject(created)
         setChecks([])
+        setReview(null)
         setSaved('Created ' + created.name + '. Run the starter checks or open its preview.')
       }
     } catch {
@@ -73,9 +79,30 @@ export default function Projects() {
     setSaved('')
     try {
       const result = await window.loneXProjects[action]()
-      if (Array.isArray(result)) setChecks(result)
+      if (Array.isArray(result)) {
+        setChecks(result)
+        setReview(null)
+      }
     } catch (failure) {
       setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not complete the starter action.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function reviewStarterFile(name: string, save = false) {
+    setPending(true)
+    setSaved('')
+    setError('')
+    try {
+      if (save) {
+        const savedName = await window.loneXProjects.saveStarterRepair(name)
+        if (savedName) setSaved('Saved repaired copy as ' + savedName)
+      } else {
+        setReview(await window.loneXProjects.reviewStarterFile(name))
+      }
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not review or save the starter file.')
     } finally {
       setPending(false)
     }
@@ -150,8 +177,18 @@ export default function Projects() {
         {checks.some(check => check.status === 'Missing') && <button className="provider-button" disabled={pending} onClick={() => void runStarterAction('repairStarter')}>Restore missing files</button>}
       </div>
       {checks.length > 0 && <ul aria-label="Starter check results" aria-live="polite">{checks.map(check =>
-        <li key={check.name}><span>{check.name}</span><small>{check.status}</small></li>
+        <li key={check.name}><span>{check.name}</span><small>{check.status}</small>
+          {check.status === 'Changed' && <button className="provider-button" disabled={pending} onClick={() => void reviewStarterFile(check.name)}>Review {check.name}</button>}
+        </li>
       )}</ul>}
+      {review && <section className="mt-4" aria-label={'Review ' + review.name}>
+        <h3>{review.name}</h3>
+        <div className="overview-panels">
+          <div className="min-w-0"><strong>Current file</strong><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all">{review.current}</pre></div>
+          <div className="min-w-0"><strong>Starter template</strong><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all">{review.expected}</pre></div>
+        </div>
+        <button className="provider-button mt-3" disabled={pending} onClick={() => void reviewStarterFile(review.name, true)}>Save repaired copy</button>
+      </section>}
     </section>}
   </section>
 }

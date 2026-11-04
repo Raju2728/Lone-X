@@ -195,7 +195,7 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .ai-avatar { flex: 0 0 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; color: var(--accent); background: var(--surface); }
 .ai-turn-body { min-width: 0; max-width: calc(100% - 42px); border: 1px solid var(--line); border-radius: 4px 12px 12px 12px; background: var(--surface); padding: 8px 12px; }
 .ai-turn-user .ai-turn-body { border-radius: 12px 4px 12px 12px; }
-.ai-turn-body strong { color: var(--muted); font-size: 12px; }
+.ai-turn-body > strong { display: block; color: var(--muted); font-size: 12px; }
 .ai-turn-body p { margin-block: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ai-compose { padding: 12px clamp(10px, 2.5vw, 30px) 16px; background: var(--bg); }
 .ai-send { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 7px; color: var(--button-text); background: var(--accent); font-weight: 700; font-size: 13px; }

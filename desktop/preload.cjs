@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld('loneXProjects', {
   createStarter: () => ipcRenderer.invoke('projects:create-starter'),
   checkStarter: () => ipcRenderer.invoke('projects:check-starter'),
   repairStarter: () => ipcRenderer.invoke('projects:repair-starter'),
+  reviewStarterFile: name => ipcRenderer.invoke('projects:review-starter-file', name),
+  saveStarterRepair: name => ipcRenderer.invoke('projects:save-starter-repair', name),
   previewStarter: () => ipcRenderer.invoke('projects:preview-starter')
 })
 

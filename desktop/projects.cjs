@@ -9,6 +9,27 @@ const starterFiles = new Map([
   ['README.md', '# Lone X starter\n\nOpen index.html in a browser to preview the project.\n']
 ])
 
+async function readTextFile(filename) {
+  const file = await open(filename, 'r')
+  try {
+    const limit = 128 * 1024
+    const stat = await file.stat()
+    if (!stat.isFile() || stat.size > limit) throw new Error('Select a text file up to 128 KB.')
+    const buffer = Buffer.alloc(limit + 1)
+    let length = 0
+    while (length <= limit) {
+      const { bytesRead } = await file.read(buffer, length, buffer.length - length, null)
+      if (!bytesRead) break
+      length += bytesRead
+    }
+    const bytes = buffer.subarray(0, length)
+    if (length > limit || bytes.includes(0)) throw new Error('Select a UTF-8 text file up to 128 KB.')
+    return { bytes, text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
+  } finally {
+    await file.close()
+  }
+}
+
 async function checkStarter(folder) {
   if (await realpath(folder) !== folder) throw new Error('The starter folder has moved or been redirected.')
   return Promise.all([...starterFiles].map(async ([name, expected]) => {
@@ -80,26 +101,9 @@ function registerProjects(rendererPath, requireAccount) {
     })
     if (result.canceled || !result.filePaths[0]) return null
     const selected = result.filePaths[0]
-    const file = await open(selected, 'r')
-    try {
-      const limit = 128 * 1024
-      const stat = await file.stat()
-      if (!stat.isFile() || stat.size > limit) throw new Error('Select a text file up to 128 KB.')
-      const buffer = Buffer.alloc(limit + 1)
-      let length = 0
-      while (length <= limit) {
-        const { bytesRead } = await file.read(buffer, length, buffer.length - length, null)
-        if (!bytesRead) break
-        length += bytesRead
-      }
-      const bytes = buffer.subarray(0, length)
-      if (length > limit || bytes.includes(0)) throw new Error('Select a UTF-8 text file up to 128 KB.')
-      const preview = { name: path.basename(selected), text: new TextDecoder('utf-8', { fatal: true }).decode(bytes) }
-      previews.set(window, bytes)
-      return preview
-    } finally {
-      await file.close()
-    }
+    const { bytes, text } = await readTextFile(selected)
+    previews.set(window, bytes)
+    return { name: path.basename(selected), text }
   })
 
   handle('projects:create-starter', async window => {
@@ -168,19 +172,40 @@ function registerProjects(rendererPath, requireAccount) {
     }
   })
 
+  async function changedStarterFile(window, name) {
+    const folder = starters.get(window)
+    if (!folder || !starterFiles.has(name)) throw new Error('Choose a file from the generated starter.')
+    if (await realpath(folder) !== folder) throw new Error('The starter folder has moved or been redirected.')
+    const filename = path.join(folder, name)
+    if (!(await lstat(filename)).isFile() || await realpath(filename) !== filename) {
+      throw new Error('The starter file must be a regular file inside the project.')
+    }
+    const { bytes, text: current } = await readTextFile(filename)
+    const expected = starterFiles.get(name)
+    if (bytes.equals(Buffer.from(expected))) throw new Error('This file already matches the starter template.')
+    return { name, current, expected }
+  }
+
+  handle('projects:review-starter-file', changedStarterFile)
+  handle('projects:save-starter-repair', async (window, name) => {
+    const { expected } = await changedStarterFile(window, name)
+    return saveNewCopy(window, expected, 'Save repaired starter copy', 'repaired-' + name)
+  })
+
+  async function saveNewCopy(window, contents, title, defaultPath) {
+    const result = await dialog.showSaveDialog(window, { title, defaultPath })
+    if (result.canceled || !result.filePath) return null
+    await writeFile(result.filePath, contents, { flag: 'wx' })
+    return path.basename(result.filePath)
+  }
+
   handle('projects:save-copy', async (window, editedText) => {
     const bytes = previews.get(window)
     if (!bytes) throw new Error('Preview a text file first.')
     if (editedText !== undefined && (typeof editedText !== 'string' || editedText.includes('\0') || Buffer.byteLength(editedText) > 128 * 1024)) {
       throw new Error('The edited text must be UTF-8 and at most 128 KB.')
     }
-    const result = await dialog.showSaveDialog(window, {
-      title: 'Save a new copy of the preview',
-      defaultPath: 'preview-copy.txt'
-    })
-    if (result.canceled || !result.filePath) return null
-    await writeFile(result.filePath, editedText ?? bytes, { flag: 'wx' })
-    return path.basename(result.filePath)
+    return saveNewCopy(window, editedText ?? bytes, 'Save a new copy of the preview', 'preview-copy.txt')
   })
 }
 

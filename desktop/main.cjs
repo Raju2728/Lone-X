@@ -3,6 +3,7 @@ const path = require('node:path')
 const { registerAI } = require('./ai.cjs')
 const { registerProjects } = require('./projects.cjs')
 const { registerAccount } = require('./account.cjs')
+const { registerTerminal } = require('./terminal.cjs')
 const rendererPath = path.join(__dirname, '../dist/index.html')
 
 function createWindow() {
@@ -27,6 +28,7 @@ app.whenReady().then(() => {
   const requireAccount = registerAccount(app, rendererPath)
   registerAI(app, rendererPath, requireAccount)
   registerProjects(rendererPath, requireAccount)
+  registerTerminal(app, rendererPath, requireAccount)
   createWindow()
 })
 app.on('window-all-closed', () => app.quit())

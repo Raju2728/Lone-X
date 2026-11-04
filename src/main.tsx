@@ -8,6 +8,7 @@ import LatticeLoader from './react-bits/LatticeLoader'
 import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
 import Projects from './Projects'
+import LocalTerminal from './LocalTerminal'
 import AccountGate from './AccountGate'
 import TechText from './react-bits/TechText'
 import './style.css'
@@ -21,7 +22,7 @@ const pages = [
   { name: 'AI workspace', icon: MessageSquare, detail: 'Draft an instruction for your agent.' },
   { name: 'Projects', icon: Folder, detail: 'Choose a local folder to view its files.' },
   { name: 'Task monitor', icon: ListChecks, detail: 'No tasks are running. Task execution becomes available with the local agent.' },
-  { name: 'Terminal', icon: Terminal, detail: 'PowerShell execution will be available after the secure local agent is connected.' },
+  { name: 'Terminal', icon: Terminal, detail: 'Run approved read-only PowerShell commands and review their results.' },
   { name: 'Activity', icon: History, detail: 'Execution history will appear here once the local agent runs tasks.' },
   { name: 'Settings', icon: Settings, detail: 'Manage your workspace appearance.' },
 ] as const
@@ -94,7 +95,6 @@ function App() {
             </section>
           </> : <>
             <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
-            {page.name === 'Terminal' && <div className="panel terminal-panel"><div><Terminal size={16} aria-hidden="true" /> PowerShell</div><pre className="terminal" aria-label="Terminal status">PS &gt; Waiting for local execution support</pre></div>}
             {page.name === 'Settings' && <>
               <section className="launch-panel" aria-label="Workspace tools">
                 <h2>Workspace tools</h2>
@@ -106,6 +106,7 @@ function App() {
               </section>
             </>}
           </>}
+          <div hidden={page.name !== 'Terminal'}><LocalTerminal /></div>
           <div hidden={page.name !== 'Projects'}><Projects /></div>
           <div hidden={page.name !== 'AI workspace'}><AIWorkspace draft={draft} setDraft={setDraft} /></div>
         </div>

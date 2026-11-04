@@ -74,6 +74,33 @@ app.whenReady().then(async () => {
       if (!document.querySelector('.shell')) throw new Error('Local account form did not unlock the workspace')
     })()
   `)
+  let approvals = 0
+  dialog.showMessageBox = async () => {
+    approvals++
+    if (approvals === 3) {
+      await window.webContents.executeJavaScript('window.loneXTerminal.stop()')
+    }
+    return { response: approvals === 1 ? 0 : 1 }
+  }
+  const terminal = await window.webContents.executeJavaScript(`
+    (async () => {
+      const terminal = window.loneXTerminal
+      let invalid = false
+      try { await terminal.run('Remove-Item') } catch { invalid = true }
+      const declined = await terminal.run('version')
+      const completed = await terminal.run('version')
+      const stopped = await terminal.run('version')
+      return { invalid, declined, completed, stopped, history: await terminal.history() }
+    })()
+  `)
+  assert.equal(terminal.invalid, true)
+  assert.equal(approvals, 3)
+  assert.equal(terminal.declined.outcome, 'Declined')
+  assert.equal(terminal.completed.outcome, 'Completed')
+  assert.match(terminal.completed.output, /^\d+\./)
+  assert.equal(terminal.stopped.outcome, 'Stopped')
+  assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed', 'Declined'])
+  console.log('PowerShell allowlist, approval, execution, stop before launch, and audit passed.')
   console.log('Local account creation and locked workspace IPC passed.')
   const result = await window.webContents.executeJavaScript(`
     (async () => {

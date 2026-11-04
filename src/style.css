@@ -254,3 +254,6 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .ai-compose .prompt-bar__send[data-pressed] { transform: none; }
 .ai-compose .prompt-bar__send[data-pressed] .prompt-bar__glyph { scale: .92; }
 .ai-compose-bar:empty { display: none; }
+
+.terminal-panel .provider-controls { flex-wrap: wrap; gap: 8px; }
+.terminal-panel > p { margin-top: 12px; }

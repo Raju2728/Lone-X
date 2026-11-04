@@ -27,3 +27,9 @@ contextBridge.exposeInMainWorld('loneXAccount', {
   requestReset: email => ipcRenderer.invoke('account:request-reset', email),
   reset: input => ipcRenderer.invoke('account:reset', input)
 })
+
+contextBridge.exposeInMainWorld('loneXTerminal', {
+  run: id => ipcRenderer.invoke('terminal:run', id),
+  stop: () => ipcRenderer.invoke('terminal:stop'),
+  history: () => ipcRenderer.invoke('terminal:history')
+})

@@ -19,3 +19,5 @@ Projects can list the immediate entries of a folder selected in the Windows fold
 The project browser can preview an explicitly selected UTF-8 text file up to 128 KB. Thought Line shows waiting and streaming status in the local chat.
 
 Users can save the preview bytes to a new file selected in the Windows save dialog. The desktop smoke test verifies the copy and refusal to overwrite an existing file.
+
+Settings > Terminal now runs two fixed, read-only PowerShell diagnostics after a native Run once approval. Local SQLite records the command label and outcome. Stop cancels a pending approval or terminates the current PowerShell process. Arbitrary commands and autonomous execution are outside this increment.

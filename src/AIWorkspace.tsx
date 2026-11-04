@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Cpu, Ellipsis, MessageSquare, Plus, Radio, Trash2, UserRound } from 'lucide-react'
+import { Cpu, Ellipsis, FileText, MessageSquare, Plus, Radio, Trash2, UserRound } from 'lucide-react'
 import LatticeLoader from './react-bits/LatticeLoader'
-import PromptBar from './react-bits/PromptBar'
+import PromptBar, { type PromptBarSendDetail } from './react-bits/PromptBar'
 import type { Usage } from './OverviewActivity'
 
 type Conversation = { id: string; title: string; updatedAt: number }
@@ -9,6 +9,9 @@ type Conversation = { id: string; title: string; updatedAt: number }
 const defaultModel = 'qwen2.5:0.5b'
 const coderModel = 'qwen2.5-coder:0.5b'
 const gemmaModel = 'gemma3:1b'
+const fileSources = [{ key: 'files', name: 'Add files', description: 'Attach local text or source files', icon: <FileText size={15} />, attach: true }]
+const responseEfforts = ['Short', 'Balanced', 'Detailed']
+const loadingLabels = ['Thinking…', 'Yosichufying…']
 
 const chatModels = [
   { key: defaultModel, name: 'Qwen2.5 0.5B', tag: 'Local' },
@@ -26,11 +29,13 @@ declare global {
       models: () => Promise<string[]>
       overview: () => Promise<Usage>
       overviewUpdate: () => Promise<string | null>
-      send: (input: { model: string; text: string; chatId: string }) => Promise<Message[] | null>
+      send: (input: { model: string; text: string; chatId: string; effort?: string }) => Promise<Message[] | null>
       installModel: (model: string) => Promise<boolean>
       conversations: () => Promise<Conversation[]>
       deleteChat: (id: string) => Promise<Conversation[]>
       stop: () => Promise<void>
+      dictate: () => Promise<string>
+      stopDictation: () => Promise<void>
       onDelta: (callback: (delta: string) => void) => () => void
     }
   }
@@ -49,11 +54,13 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   const [openActions, setOpenActions] = useState<string>()
   const [pending, setPending] = useState('')
   const [response, setResponse] = useState('')
+  const [loadingLabel, setLoadingLabel] = useState(loadingLabels[0])
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
   const api = window.loneXAI
   const transcript = useRef<HTMLDivElement>(null)
   const newChatButton = useRef<HTMLButtonElement>(null)
+  const files = useRef(new Map<string, File>())
   const followLatest = useRef(true)
 
   useEffect(() => {
@@ -109,6 +116,8 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   function openChat(id: string, discardDraft = false) {
     setOpenActions(undefined)
     if (pending || id === chatId) return
+    files.current.clear()
+    stopDictation()
     if (!discardDraft) localStorage.setItem('lone-x-draft-' + chatId, draft)
     const nextDraft = localStorage.getItem('lone-x-draft-' + id) ?? ''
     localStorage.setItem('lone-x-current-chat', id)
@@ -136,21 +145,66 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     }
   }
 
-  async function send(prompt: string) {
-    const text = prompt.trim()
-    if (deleting || installing || !ready || !text || needsModel || pending) return
-    followLatest.current = true
-    setPending(text)
-    setResponse('')
+  function attachFiles() {
+    return new Promise<string[]>(resolve => {
+      const picker = document.createElement('input')
+      picker.type = 'file'
+      picker.multiple = true
+      picker.accept = '.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.html,.css,.py,.xml,.yaml,.yml,.log'
+      picker.addEventListener('cancel', () => resolve([]), { once: true })
+      picker.addEventListener('change', () => {
+        const chosen = Array.from(picker.files ?? [])
+        const accepted = chosen.filter(file => file.size <= 16000 && /\.(txt|md|csv|json|js|ts|tsx|jsx|html|css|py|xml|ya?ml|log)$/i.test(file.name))
+        setError(accepted.length < chosen.length ? 'Choose text or source files up to 16 KB each.' : '')
+        for (const file of accepted) files.current.set(file.name, file)
+        resolve(accepted.map(file => file.name))
+      }, { once: true })
+      picker.click()
+    })
+  }
+
+  function stopDictation() {
+    void api.stopDictation().catch(() => {})
+  }
+
+  async function dictate() {
     setError('')
     try {
-      const history = await api.send({ model, text, chatId })
-      if (!history) return
+      return await api.dictate()
+    } catch {
+      setError('Windows dictation is unavailable. Check your microphone and installed speech language.')
+    }
+  }
+
+  async function send(prompt: string, detail: PromptBarSendDetail) {
+    const text = prompt.trim()
+    if (deleting || installing || !ready || (!text && !detail.attachments.length) || needsModel || pending) return false
+    followLatest.current = true
+    stopDictation()
+    setPending([text, ...detail.attachments].filter(Boolean).join('\n'))
+    setResponse('')
+    setLoadingLabel(loadingLabels[Math.floor(Math.random() * loadingLabels.length)])
+    setError('')
+    try {
+      const excerpts = await Promise.all(detail.attachments.map(async name => {
+        const file = files.current.get(name)
+        if (!file) throw new Error('Attach the file again before sending.')
+        const content = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer())
+        if (content.includes('\0')) throw new Error('Attachments must be UTF-8 text files.')
+        return 'File: ' + name + '\n' + content
+      }))
+      const message = [text, ...excerpts].filter(Boolean).join('\n\n')
+      if (message.length > 16000) throw new Error('Keep the prompt and attached text within 16,000 characters.')
+      const history = await api.send({ model, text: message, chatId, effort: detail.effort })
+      if (!history) return false
       setMessages(history)
       setDraft('')
+      files.current.clear()
       void api.conversations().then(setConversations).catch(() => {})
+      return true
     } catch (failure) {
       setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not send the instruction.')
+      return false
     } finally {
       setPending('')
       setResponse('')
@@ -211,18 +265,20 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
           <div className="ai-turn-body">
             <strong>{user ? 'You' : 'Raju'}</strong>
             {message.content && <p>{message.content}</p>}
-            {streaming && <LatticeLoader label={response ? 'Streaming response' : 'Waiting for Ollama'} color="var(--accent)" />}
+            {streaming && !response && <LatticeLoader className="ai-thinking" label={loadingLabel} pattern="sweep" grid={4}
+              shape="round" cellSize={3} gap={2} fontSize={13} color="var(--accent)" showTimer={false} />}
           </div>
         </article>
       })}
     </div>
 
     <div className="ai-compose">
-      <PromptBar value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready || deleting || installing || needsModel}
-        onSend={text => void send(text)} onStop={() => void api.stop().catch(() => setError('Could not stop the response.'))}
-        sources={[]} commands={[]} models={chatModels} efforts={[]} selectedModel={model} modelLocked={installing || deleting}
+      <PromptBar key={chatId} value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready || deleting || installing || needsModel}
+        onSend={send} onStop={() => void api.stop().catch(() => setError('Could not stop the response.'))}
+        sources={fileSources} onAttach={attachFiles} onDictate={dictate} onCancelDictation={stopDictation}
+        commands={[]} models={chatModels} efforts={responseEfforts} selectedModel={model} modelLocked={installing || deleting}
         onModelChange={key => { setModel(key); setError('') }}
-        placeholder="Ask Raju…" background="var(--bg)" color="var(--text)" menuBackground="var(--surface)" sparkColor="var(--accent)" />
+        placeholder="Ask Anything" radius={24} background="var(--bg)" color="var(--text)" menuBackground="var(--surface)" sparkColor="var(--accent)" />
       {needsModel && <div className="ai-model-actions">
         {installing ? <>
           <LatticeLoader label={'Downloading ' + modelName} color="var(--accent)" />

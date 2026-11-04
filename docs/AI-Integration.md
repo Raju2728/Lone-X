@@ -15,6 +15,8 @@ Run `npm.cmd run build` and `npm.cmd run test:desktop` for the desktop regressio
 
 Chat history expires 30 days after it is saved. Cleanup runs at launch, hourly while the desktop app is running, and when history is read or used for a new request. Existing messages without a timestamp get 30 days from their first launch after this update.
 
+The Prompt Bar can attach UTF-8 text and source files. Their contents count toward the 16,000-character prompt limit and are stored with the prompt in local chat history. Short, Balanced, and Detailed set different output token limits. Dictation uses the Windows speech recognizer and default microphone, and requires an installed speech language.
+
 ## Local account and email
 
 The Windows app creates one local email/password account per Electron user data profile. Passwords are salted and hashed. A successful sign-in stays active for three days, including across app restarts. The session expiry is encrypted with Windows protected storage when available. A password reset clears the session.

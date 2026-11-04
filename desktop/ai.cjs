@@ -1,4 +1,6 @@
 const { DatabaseSync } = require('node:sqlite')
+const { execFile } = require('node:child_process')
+const { promisify } = require('node:util')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 const { ipcMain } = require('electron')
@@ -11,6 +13,20 @@ const coderModel = 'qwen2.5-coder:0.5b'
 const gemmaModel = 'gemma3:1b'
 const optionalModels = new Set([coderModel, gemmaModel])
 const localModels = new Set(['qwen2.5:0.5b', ...optionalModels])
+const responseLimits = new Map([['Short', 384], ['Balanced', 1024], ['Detailed', 4096]])
+const runFile = promisify(execFile)
+const dictationScript = `
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Speech
+$engine = New-Object System.Speech.Recognition.SpeechRecognitionEngine
+try {
+  $engine.LoadGrammar((New-Object System.Speech.Recognition.DictationGrammar))
+  $engine.SetInputToDefaultAudioDevice()
+  $result = $engine.Recognize([TimeSpan]::FromSeconds(8))
+  if ($result) { $result.Text }
+} finally { $engine.Dispose() }
+`
 
 async function* readLines(body) {
   const decoder = new TextDecoder()
@@ -153,6 +169,8 @@ function registerAI(app, rendererPath, requireAccount) {
     id, title: title || shortTitle(preview ?? '') || 'Untitled chat', updatedAt
   }))
   let active
+  let dictation
+  app.once('before-quit', () => dictation?.abort())
 
 
   function handle(channel, action) {
@@ -187,6 +205,24 @@ function registerAI(app, rendererPath, requireAccount) {
   })
   handle('stop', event => {
     if (active?.sender === event.sender) active.controller.abort()
+  })
+  handle('stop-dictation', () => dictation?.abort())
+  handle('dictate', async () => {
+    if (dictation) return ''
+    const controller = new AbortController()
+    dictation = controller
+    try {
+      const binary = path.join(process.env.SystemRoot || 'C:/Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
+      const { stdout } = await runFile(binary, ['-NoProfile', '-NonInteractive', '-Command', dictationScript], {
+        windowsHide: true, timeout: 20000, maxBuffer: 16384, signal: controller.signal
+      })
+      return stdout.trim()
+    } catch {
+      if (controller.signal.aborted) return ''
+      throw new Error('Windows dictation is unavailable. Check your microphone and installed speech language.')
+    } finally {
+      dictation = undefined
+    }
   })
   async function installedModels() {
     try {
@@ -248,7 +284,7 @@ function registerAI(app, rendererPath, requireAccount) {
   })
 
   handle('send', async (event, input) => {
-    const { model, text } = input ?? {}
+    const { model, text, effort } = input ?? {}
     const id = chatId(input?.chatId)
     if (!localModels.has(model) ||
         typeof text !== 'string' || !text.trim() || text.length > 16000) throw new Error('Enter a model and an instruction of up to 16,000 characters.')
@@ -267,7 +303,7 @@ function registerAI(app, rendererPath, requireAccount) {
       }
       const endpoint = await runtime()
       signal.throwIfAborted()
-      let tokens = await streamReply(model, messages, onDelta, signal, fetch, endpoint)
+      let tokens = await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096)
       controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')
       let title = existingTitle.get(id)?.chat_title

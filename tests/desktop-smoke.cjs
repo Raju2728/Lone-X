@@ -30,6 +30,10 @@ global.fetch = (url, options) => {
       return Promise.resolve(new Response(JSON.stringify({ message: { content }, done: true })))
     }
     if (JSON.parse(options.body).messages.at(-1).content === 'Retry this instruction') return Promise.resolve(new Response('', { status: 404 }))
+    if (payload.messages.at(-1).content.startsWith('Local instruction')) {
+      assert.equal(payload.options.num_predict, 1024)
+      assert.equal(payload.messages.at(-1).content, 'Local instruction\n\nFile: notes.txt\nAttachment fixture')
+    }
     assert.equal(JSON.parse(options.body).model, 'qwen2.5:0.5b')
     const encoder = new TextEncoder()
     return Promise.resolve(new Response(new ReadableStream({
@@ -88,6 +92,8 @@ app.whenReady().then(async () => {
     })
   }
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /Sign in/)
+  window.webContents.openDevTools({ mode: 'detach', activate: false })
+  assert.equal(window.webContents.isDevToolsOpened(), false)
   await window.webContents.executeJavaScript(`
     (async () => {
       for (let attempt = 0; attempt < 100 && !document.querySelector('.account-panel form'); attempt++) {
@@ -284,7 +290,7 @@ app.whenReady().then(async () => {
           if (predicate()) return
           await new Promise(resolve => setTimeout(resolve, 25))
         }
-        throw new Error('Chat UI did not reach expected state')
+        throw new Error('Chat UI did not reach expected state: ' + predicate.toString() + ' | ' + document.querySelector('.ai-compose')?.textContent)
       }
       document.querySelectorAll('aside nav button')[1].click()
       await waitFor(() => !document.querySelector('#draft').closest('[hidden]'))
@@ -307,20 +313,18 @@ app.whenReady().then(async () => {
         element.dispatchEvent(new Event('input', { bubbles: true }))
       }
       const initialHeight = draft.getBoundingClientRect().height
-      const centered = () => {
-        const input = draft.getBoundingClientRect()
-        const send = workspace.querySelector('.prompt-bar__send').getBoundingClientRect()
-        return Math.abs(input.top + input.height / 2 - send.top - send.height / 2) < 1
+      if (draft.placeholder !== 'Ask Anything') throw new Error('Prompt placeholder is incorrect')
+      for (const label of ['Add files and sources', 'Choose effort', 'Dictate']) {
+        if (!buttons().some(button => button.getAttribute('aria-label') === label)) throw new Error('Missing composer control: ' + label)
       }
-      if (!centered()) throw new Error('Empty prompt is misaligned')
       fill(draft, 'Single line')
       await waitFor(() => localStorage.getItem('lone-x-draft') === 'Single line')
-      if (!centered() || workspace.textContent.includes('Draft saved locally')) throw new Error('Draft layout is incorrect')
+      if (workspace.textContent.includes('Draft saved locally')) throw new Error('Draft layout is incorrect')
       fill(draft, ['one', 'two', 'three'].join(String.fromCharCode(10)))
       await waitFor(() => draft.getBoundingClientRect().height > initialHeight)
       const promptBounds = draft.getBoundingClientRect()
       const sendBounds = workspace.querySelector('.prompt-bar__send').getBoundingClientRect()
-      if (sendBounds.left < promptBounds.right || sendBounds.top >= promptBounds.bottom) throw new Error('Send button is outside the prompt row')
+      if (sendBounds.top < promptBounds.bottom) throw new Error('Prompt tools should sit below the text field')
       if (getComputedStyle(draft).borderTopWidth !== '0px') throw new Error('Prompt border is visible')
       if (parseFloat(getComputedStyle(draft.closest('.prompt-bar__field')).borderTopLeftRadius) < 20) throw new Error('Prompt bar is missing its rounded frame')
       const send = async text => {
@@ -332,9 +336,21 @@ app.whenReady().then(async () => {
         if (!button().contains(target)) throw new Error('Send arrow is not clickable at its visible position')
         button().click()
       }
+      const originalClick = HTMLInputElement.prototype.click
+      HTMLInputElement.prototype.click = function () {
+        if (this.type !== 'file') return originalClick.call(this)
+        const selection = new DataTransfer()
+        selection.items.add(new File(['Attachment fixture'], 'notes.txt', { type: 'text/plain' }))
+        this.files = selection.files
+        this.dispatchEvent(new Event('change'))
+      }
+      buttons().find(button => button.getAttribute('aria-label') === 'Add files and sources').click()
+      await waitFor(() => options().some(option => option.textContent.includes('Add files')))
+      options().find(option => option.textContent.includes('Add files')).click()
+      await waitFor(() => workspace.querySelector('.prompt-bar__chip-name')?.textContent === 'notes.txt')
+      HTMLInputElement.prototype.click = originalClick
       await send('Local instruction')
-      await waitFor(() => workspace.textContent.includes('Waiting for Ollama'))
-      await waitFor(() => workspace.textContent.includes('Streaming response'))
+      await waitFor(() => /Thinking|Yosichufying/.test(workspace.querySelector('.ai-thinking')?.textContent ?? ''))
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
       if (workspace.textContent.includes('Response saved locally')) throw new Error('Response-saved label is still visible')
       await send('Retry this instruction')
@@ -348,7 +364,7 @@ app.whenReady().then(async () => {
       newChat.click()
       await waitFor(() => workspace.textContent.includes('Start a local conversation'))
       const previousId = localStorage.getItem('lone-x-current-chat')
-      draft.dispatchEvent(new KeyboardEvent('keydown', { key: 'O', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
+      workspace.querySelector('textarea').dispatchEvent(new KeyboardEvent('keydown', { key: 'O', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
       await waitFor(() => localStorage.getItem('lone-x-current-chat') !== previousId)
       const newHistory = await window.loneXAI.history(localStorage.getItem('lone-x-current-chat'))
       const older = [...workspace.querySelectorAll('.ai-history button')].find(button => button.textContent === 'Desktop Chat Testing')
@@ -371,7 +387,7 @@ app.whenReady().then(async () => {
   assert.deepEqual(chat.newHistory, [])
   assert.equal(chat.retainedDraft, 'Retry this instruction')
   assert.deepEqual(chat.history, [
-    { role: 'user', content: 'Local instruction' },
+    { role: 'user', content: 'Local instruction\n\nFile: notes.txt\nAttachment fixture' },
     { role: 'assistant', content: 'Smoke response' },
     { role: 'user', content: 'Local retry' },
     { role: 'assistant', content: 'Smoke response' }

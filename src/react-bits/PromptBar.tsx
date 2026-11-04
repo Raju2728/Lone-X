@@ -74,10 +74,11 @@ export interface PromptBarProps {
   defaultEffort?: string;
   onEffortChange?: (effort: string) => void;
   busy?: boolean;
-  onSend?: (text: string, detail: PromptBarSendDetail) => void;
+  onSend?: (text: string, detail: PromptBarSendDetail) => void | Promise<boolean>;
   onStop?: () => void;
   onAttach?: () => string | string[] | void | Promise<string | string[] | void>;
   onDictate?: () => string | void | Promise<string | void>;
+  onCancelDictation?: () => void;
   background?: string;
   color?: string;
   menuBackground?: string;
@@ -102,7 +103,7 @@ type Row = {
   attach?: boolean;
 };
 type Token = { kind: 'at' | 'slash'; query: string; start: number };
-type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onAttach' | 'onDictate' | 'onEffortChange'>;
+type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onAttach' | 'onDictate' | 'onCancelDictation' | 'onEffortChange'>;
 type Spark = {
   x: number;
   y: number;
@@ -237,6 +238,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   onStop,
   onAttach,
   onDictate,
+  onCancelDictation,
   background = '#27272a',
   color = '#f5f5f5',
   menuBackground = '#323236',
@@ -263,7 +265,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const lastOpen = useRef<string | null>(null);
   const dictation = useRef(0);
   const latest = useRef<Latest>({});
-  latest.current = { onSend, onStop, onAttach, onDictate, onEffortChange };
+  latest.current = { onSend, onStop, onAttach, onDictate, onCancelDictation, onEffortChange };
 
   const [localDraft, setLocalDraft] = useState('');
   const draft = value ?? localDraft;
@@ -501,7 +503,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
       setDraft(head);
       Promise.resolve(latest.current.onAttach?.()).then(files => {
         if (!files) return;
-        setAttachments(a => [...a, ...(Array.isArray(files) ? files : [files])]);
+        setAttachments(a => [...new Set([...a, ...(Array.isArray(files) ? files : [files])])]);
       });
     } else if (open === 'at') {
       setDraft(`${head}@${row.name} `);
@@ -515,9 +517,10 @@ const PromptBar: React.FC<PromptBarProps> = ({
 
   const send = () => {
     if (!canSend || busy) return;
-    latest.current.onSend?.(draft.trim(), { attachments, model, effort: level });
+    const result = latest.current.onSend?.(draft.trim(), { attachments, model, effort: level });
     if (value === undefined) setDraft('');
-    setAttachments([]);
+    if (result) void result.then(sent => { if (sent) setAttachments([]); });
+    else setAttachments([]);
     setDismissed(false);
     closeMenus();
     focusInput();
@@ -526,6 +529,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const toggleListen = () => {
     if (listening) {
       dictation.current += 1;
+      latest.current.onCancelDictation?.();
       setListening(false);
       return;
     }
@@ -623,13 +627,13 @@ const PromptBar: React.FC<PromptBarProps> = ({
               <div className="prompt-bar__effort-head">
                 <span className="prompt-bar__effort-title">Effort</span>
                 <span className="prompt-bar__effort-level">{level}</span>
-                <span className="prompt-bar__effort-help" title="Higher effort thinks longer before answering">
+                <span className="prompt-bar__effort-help" title="Higher effort allows a longer response">
                   <HugeiconsIcon icon={HelpCircleIcon} size={14} strokeWidth={1.8} />
                 </span>
               </div>
               <div className="prompt-bar__effort-ends">
                 <span>Faster</span>
-                <span>Smarter</span>
+                <span>More detail</span>
               </div>
               <div
                 className="prompt-bar__effort-track"
@@ -721,6 +725,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
                   type="button"
                   className="prompt-bar__chip-x"
                   aria-label={`Remove ${file}`}
+                  disabled={busy}
                   onClick={() => setAttachments(a => a.filter((_, j) => j !== i))}
                 >
                   <HugeiconsIcon icon={Cancel01Icon} size={10} strokeWidth={2.5} />
@@ -766,15 +771,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
             type="button"
             className="prompt-bar__tool"
             aria-label="Add files and sources"
+            disabled={busy}
             aria-expanded={plusOpen}
             data-on={plusOpen ? '' : undefined}
             onMouseDown={e => e.preventDefault()}
             onClick={() => {
+              focusInput();
               setModelOpen(false);
               setEffortOpen(false);
               setActive(0);
               setPlusOpen(v => !v);
-              focusInput();
             }}
           >
             <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={2} />
@@ -806,15 +812,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
               type="button"
               className="prompt-bar__pick"
               aria-label="Choose effort"
+              disabled={busy}
               aria-expanded={effortOpen}
               data-on={effortOpen ? '' : undefined}
               data-max={maxed ? '' : undefined}
               onMouseDown={e => e.preventDefault()}
               onClick={() => {
+                focusInput();
                 setPlusOpen(false);
                 setModelOpen(false);
                 setEffortOpen(v => !v);
-                focusInput();
               }}
             >
               <HugeiconsIcon icon={SparklesIcon} size={13} strokeWidth={2} />
@@ -827,6 +834,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
               type="button"
               className="prompt-bar__tool"
               aria-label={listening ? 'Stop dictation' : 'Dictate'}
+              disabled={busy && !listening}
               aria-pressed={listening}
               data-on={listening ? '' : undefined}
               onMouseDown={e => e.preventDefault()}

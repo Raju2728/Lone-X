@@ -15,7 +15,7 @@ function createWindow() {
     minHeight: 560,
     backgroundColor: '#000000',
     icon: path.join(__dirname, '../public/logo.png'),
-    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
+    webPreferences: { devTools: false, sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', event => event.preventDefault())

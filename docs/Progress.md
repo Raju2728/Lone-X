@@ -29,3 +29,11 @@ Milestone 3 checks passed for approved file operations, the fixed PowerShell com
 Settings > Task monitor drafts a local Ollama plan with up to eight ordered steps and a verification check for each step. The renderer displays validated text for review. Drafting does not grant permissions or execute tools. The Windows smoke test checks structured plan parsing and rejection of malformed replies. A live qwen2.5:0.5b planning request also passed.
 
 The fixed read-only PowerShell commands now run directly from the console. The allowlist, local audit, and emergency stop still apply.
+
+The task planner can attach an approved read-only diagnostic to a proposed step. Users confirm the exact diagnostic before running it, see its result beside the step, and can stop it. Execution uses the existing terminal allowlist and SQLite audit log.
+
+Projects can create a static HTML starter in a new subfolder after the user selects its parent. The starter contains an HTML page, stylesheet, and README. The smoke test verifies the generated files in an isolated profile.
+
+Projects can edit a previewed UTF-8 source file and save the result to a new path selected through the Windows save dialog. The original stays available for comparison. The smoke test checks the edited bytes, original file, and overwrite protection.
+
+Dependency installation, project execution, and the test failure and repair workflow are still open for this milestone.

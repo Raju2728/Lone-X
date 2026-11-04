@@ -3,6 +3,9 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('loneXAI', {
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),
+  overview: () => ipcRenderer.invoke('ai:overview'),
+  overviewUpdate: () => ipcRenderer.invoke('ai:overview-update'),
+  installModel: model => ipcRenderer.invoke('ai:install-model', model),
   conversations: () => ipcRenderer.invoke('ai:conversations'),
   deleteChat: id => ipcRenderer.invoke('ai:delete-chat', id),
   stop: () => ipcRenderer.invoke('ai:stop'),
@@ -18,7 +21,8 @@ contextBridge.exposeInMainWorld('loneXAI', {
 contextBridge.exposeInMainWorld('loneXProjects', {
   open: () => ipcRenderer.invoke('projects:open'),
   preview: () => ipcRenderer.invoke('projects:preview'),
-  saveCopy: () => ipcRenderer.invoke('projects:save-copy')
+  saveCopy: text => ipcRenderer.invoke('projects:save-copy', text),
+  createStarter: () => ipcRenderer.invoke('projects:create-starter')
 })
 
 contextBridge.exposeInMainWorld('loneXAccount', {

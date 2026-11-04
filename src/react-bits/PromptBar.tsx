@@ -67,6 +67,9 @@ export interface PromptBarProps {
   commands?: PromptBarCommand[];
   models?: PromptBarModel[];
   defaultModel?: string;
+  selectedModel?: string;
+  onModelChange?: (key: string) => void;
+  modelLocked?: boolean;
   efforts?: string[];
   defaultEffort?: string;
   onEffortChange?: (effort: string) => void;
@@ -223,6 +226,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
   commands = DEFAULT_COMMANDS,
   models = DEFAULT_MODELS,
   defaultModel = '',
+  selectedModel,
+  onModelChange,
+  modelLocked = false,
   efforts = DEFAULT_EFFORTS,
   defaultEffort = '',
   onEffortChange,
@@ -281,9 +287,10 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const [listening, setListening] = useState(false);
   const [pressed, setPressed] = useState(false);
 
-  const model = models.find(m => m.key === modelKey) ?? models[0];
-  const token = dismissed ? null : parseToken(draft);
-  const open = plusOpen ? 'at' : (token?.kind ?? (modelOpen ? 'model' : effortOpen ? 'effort' : null));
+  const model = models.find(m => m.key === (selectedModel ?? modelKey)) ?? models[0];
+  const candidate = dismissed ? null : parseToken(draft);
+  const token = candidate && (candidate.kind === 'at' ? sources.length : commands.length) ? candidate : null;
+  const open = plusOpen ? 'at' : modelOpen ? 'model' : effortOpen ? 'effort' : token?.kind ?? null;
   const query = plusOpen ? '' : (token?.query ?? '');
   const list = useMemo<Row[]>(() => {
     if (open === 'at') return sources.filter(s => s.name.toLowerCase().includes(query));
@@ -482,7 +489,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
 
   const pick = (row: Row) => {
     if (open === 'model') {
+      if (modelLocked || busy) return;
       setModelKey(row.key);
+      onModelChange?.(row.key);
       setModelOpen(false);
       focusInput();
       return;
@@ -594,6 +603,20 @@ const PromptBar: React.FC<PromptBarProps> = ({
             open === 'at' ? 'Sources' : open === 'slash' ? 'Commands' : open === 'model' ? 'Models' : 'Effort'
           }
           data-kind={open}
+          onKeyDown={event => {
+            if (open !== 'model') return;
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeMenus();
+              rootRef.current?.querySelector<HTMLButtonElement>('[aria-label="Choose model"]')?.focus();
+            }
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              const next = (cursor + (event.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length;
+              setActive(next);
+              rowRefs.current[next]?.focus();
+            }
+          }}
         >
           {open === 'effort' ? (
             <>
@@ -642,6 +665,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             </>
           ) : (
             <>
+              {open === 'model' && <div className="prompt-bar__model-title" aria-hidden="true">Select model</div>}
               <span ref={glowRef} className="prompt-bar__glow" aria-hidden="true" />
               {list.map((row, i) => (
                 <button
@@ -651,10 +675,11 @@ const PromptBar: React.FC<PromptBarProps> = ({
                   }}
                   type="button"
                   role="option"
-                  aria-selected={i === cursor}
+                  aria-selected={open === 'model' ? row.key === model?.key : i === cursor}
                   className="prompt-bar__row"
                   onMouseDown={e => e.preventDefault()}
                   onPointerEnter={() => setActive(i)}
+                  onFocus={() => setActive(i)}
                   onClick={() => pick(row)}
                 >
                   {open === 'at' ? <span className="prompt-bar__row-icon">{renderIcon(row.icon, 15)}</span> : null}
@@ -759,15 +784,17 @@ const PromptBar: React.FC<PromptBarProps> = ({
               type="button"
               className="prompt-bar__pick"
               aria-label="Choose model"
+              disabled={busy || modelLocked}
               aria-expanded={modelOpen}
               data-on={modelOpen ? '' : undefined}
               onMouseDown={e => e.preventDefault()}
               onClick={() => {
                 setPlusOpen(false);
                 setEffortOpen(false);
-                setActive(Math.max(0, models.indexOf(model)));
-                setModelOpen(v => !v);
-                focusInput();
+                const index = Math.max(0, models.indexOf(model));
+                setActive(index);
+                setModelOpen(!modelOpen);
+                if (!modelOpen) requestAnimationFrame(() => rowRefs.current[index]?.focus());
               }}
             >
               <span>{model.name}</span>

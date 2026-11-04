@@ -7,13 +7,26 @@ global.fetch = (url, options) => {
   if (url === 'http://127.0.0.1:11434/api/tags') {
     return Promise.resolve(Response.json({ models: [{ name: 'smoke-model' }] }))
   }
+  if (url === 'http://127.0.0.1:11434/api/pull') {
+    const { model, stream } = JSON.parse(options.body)
+    assert.ok(['qwen2.5-coder:0.5b', 'gemma3:1b'].includes(model))
+    assert.equal(stream, false)
+    return Promise.resolve(Response.json({ status: 'success' }))
+  }
   if (url === 'http://127.0.0.1:11434/api/chat') {
     const payload = JSON.parse(options.body)
+    if (payload.options.num_predict === 24) {
+      return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true })))
+    }
+    if (payload.model === 'gemma3:1b') {
+      assert.deepEqual(payload.messages, [{ role: 'user', content: 'Local Gemma test' }])
+      return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Gemma reply' }, done: true, prompt_eval_count: 7, eval_count: 3 })))
+    }
     if (payload.format) {
       assert.equal(payload.format.type, 'object')
       const content = payload.messages.at(-1).content === 'Invalid plan fixture'
         ? '{"summary":"Missing steps"}'
-        : JSON.stringify({ summary: 'Inspect the project', steps: [{ action: 'List project files', verify: 'Check the expected files appear' }] })
+        : JSON.stringify({ summary: 'Inspect the project', steps: [{ action: 'List project files', verify: 'Check the expected files appear', tool: payload.messages.at(-1).content === 'Unknown tool fixture' ? 'remove-item' : 'version' }] })
       return Promise.resolve(new Response(JSON.stringify({ message: { content }, done: true })))
     }
     if (JSON.parse(options.body).messages.at(-1).content === 'Retry this instruction') return Promise.resolve(new Response('', { status: 404 }))
@@ -94,9 +107,30 @@ app.whenReady().then(async () => {
     })()
   `)
   stopRunningCommand = () => window.webContents.executeJavaScript('window.loneXTerminal.stop()')
+  assert.equal(await window.webContents.executeJavaScript('window.loneXAI.installModel(\'qwen2.5-coder:0.5b\')'), true)
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({ model: 'unapproved', text: 'test' })"))
+  assert.equal(await window.webContents.executeJavaScript("window.loneXAI.installModel('gemma3:1b')"), true)
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.installModel('unapproved')"), /supported model/)
+  const gemma = await window.webContents.executeJavaScript(`
+    (async () => {
+      const history = await window.loneXAI.send({ model: 'gemma3:1b', text: 'Local Gemma test', chatId: 'gemma-test' })
+      await window.loneXAI.deleteChat('gemma-test')
+      return history
+    })()
+  `)
+  assert.deepEqual(gemma, [{ role: 'user', content: 'Local Gemma test' }, { role: 'assistant', content: 'Gemma reply' }])
+  const usage = await window.webContents.executeJavaScript('window.loneXAI.overview()')
+  assert.equal(usage.completed, 1)
+  assert.equal(usage.tokens, 10)
+  assert.ok(usage.elapsedMs >= 0)
+  assert.equal(usage.version, 'Lone X (Beta)')
+  console.log('Gemma 3 local Ollama streaming passed.')
+  console.log('Fixed Qwen Coder download and model allowlist passed.')
   const plan = await window.webContents.executeJavaScript("window.loneXAI.plan('Inspect project')")
   assert.equal(plan.summary, 'Inspect the project')
-  assert.deepEqual(plan.steps, [{ action: 'List project files', verify: 'Check the expected files appear' }])
+  assert.deepEqual(plan.steps, [{ action: 'List project files', verify: 'Check the expected files appear', tool: 'version' }])
+  const unknown = await window.webContents.executeJavaScript("window.loneXAI.plan('Unknown tool fixture')")
+  assert.equal(unknown.steps[0].tool, undefined)
   await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.plan('Invalid plan fixture')"), /usable plan/)
   console.log('Structured local planning and malformed output rejection passed.')
   dialog.showMessageBox = async () => { throw new Error('Allowlisted commands should run without a dialog') }
@@ -143,6 +177,12 @@ app.whenReady().then(async () => {
       if (document.querySelector('.ps-entry .ps-error')) throw new Error('Get-Date failed')
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
       await waitFor(() => input.value === 'Get-Date')
+      document.querySelector('.rail-settings').click()
+      await waitFor(() => document.querySelector('h1')?.textContent === 'Settings')
+      const activityLink = [...document.querySelectorAll('.launch-panel button')].find(button => button.querySelector('strong')?.textContent === 'Activity')
+      activityLink.click()
+      await waitFor(() => document.querySelector('.activity-log')?.textContent.includes('Current date and time'))
+      if (!document.querySelector('.overview-activity')) throw new Error('Activity summary is missing')
       document.querySelector('aside nav button').click()
       await waitFor(() => document.querySelector('h1')?.textContent === 'Overview')
     })()
@@ -155,6 +195,17 @@ app.whenReady().then(async () => {
       const wait = () => new Promise(resolve => setTimeout(resolve, 75))
       await wait()
       const initial = heading()
+      const work = document.querySelector('.work')
+      const railTop = document.querySelector('.rail').getBoundingClientRect().top
+      const spacer = document.createElement('div')
+      spacer.style.height = '200vh'
+      work.append(spacer)
+      work.scrollTop = 100
+      if (work.scrollTop !== 100 || window.scrollY !== 0 || document.querySelector('.rail').getBoundingClientRect().top !== railTop) throw new Error('Sidebar moved with page content')
+      spacer.remove()
+      work.scrollTop = 0
+      if (![...document.querySelectorAll('[aria-labelledby=launch-heading] strong')].some(label => label.textContent === 'Chat')) throw new Error('Quick Access is missing Chat')
+      const overviewWidth = document.querySelector('.rail').getBoundingClientRect().width
       const start = document.documentElement.dataset.theme
       document.querySelector('.rail [role=switch]').dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
@@ -168,7 +219,17 @@ app.whenReady().then(async () => {
         sections.push(document.querySelector('[aria-label="AI conversation"]').closest('[hidden]') ? heading() : 'AI workspace')
       }
       const storedTheme = localStorage.getItem('lone-x-theme')
-      return { initial, start, changed, storedTheme, sections, nodeExposed: typeof require !== 'undefined' }
+      const rail = document.querySelector('.rail')
+      const chatWidth = rail.getBoundingClientRect().width
+      const chatButton = rail.querySelector('button[aria-label=Chat]')
+      const compactChat = chatWidth < overviewWidth && getComputedStyle(chatButton.querySelector('span')).display === 'none'
+      rail.querySelector('button[aria-label=Overview]').click()
+      await wait()
+      const expandedOverview = rail.getBoundingClientRect().width === overviewWidth
+      const overviewPanel = document.querySelector('.overview-activity')
+      if (!overviewPanel?.textContent.includes('Lone X (Beta)') || !overviewPanel.textContent.includes('smoke-model')) throw new Error('Overview metrics or installed models are missing')
+      if (overviewPanel.querySelector('.overview-update')) throw new Error('Overview shows an unverified update')
+      return { initial, start, changed, storedTheme, sections, compactChat, expandedOverview, nodeExposed: typeof require !== 'undefined' }
     })()
   `)
   assert.equal(result.initial, 'Overview')
@@ -176,6 +237,8 @@ app.whenReady().then(async () => {
   assert.equal(result.changed, result.start === 'light' ? 'dark' : 'light')
   assert.equal(result.storedTheme, result.changed)
   assert.deepEqual(result.sections, ['Overview', 'AI workspace'])
+  assert.equal(result.compactChat, true)
+  assert.equal(result.expandedOverview, true)
   assert.equal(result.nodeExposed, false)
   const project = await window.webContents.executeJavaScript(`
     (async () => ({
@@ -192,8 +255,20 @@ app.whenReady().then(async () => {
   })
   assert.equal(await window.webContents.executeJavaScript('window.loneXProjects.saveCopy()'), 'copy.txt')
   assert.equal(require('node:fs').readFileSync(copyPath, 'utf8'), 'fixture')
+  const editedPath = require('node:path').join(projectPath, 'edited.txt')
+  const originalSaveDialog = dialog.showSaveDialog
+  dialog.showSaveDialog = async () => ({ canceled: false, filePath: editedPath })
+  assert.equal(await window.webContents.executeJavaScript("window.loneXProjects.saveCopy('edited fixture')"), 'edited.txt')
+  dialog.showSaveDialog = originalSaveDialog
+  assert.equal(require('node:fs').readFileSync(editedPath, 'utf8'), 'edited fixture')
+  assert.equal(require('node:fs').readFileSync(require('node:path').join(projectPath, 'README.md'), 'utf8'), 'fixture')
   await assert.rejects(window.webContents.executeJavaScript('window.loneXProjects.saveCopy()'))
   assert.equal(require('node:fs').readFileSync(copyPath, 'utf8'), 'fixture')
+  const starter = await window.webContents.executeJavaScript('window.loneXProjects.createStarter()')
+  assert.match(starter.name, /^lone-x-starter-/)
+  assert.deepEqual(starter.entries.map(entry => entry.name), ['index.html', 'styles.css', 'README.md'])
+  assert.match(require('node:fs').readFileSync(require('node:path').join(projectPath, starter.name, 'index.html'), 'utf8'), /Your starter project is ready/)
+  console.log('Approved HTML starter creation and file contents passed.')
   console.log('Project picker, read-only preview, and save-copy overwrite protection passed.')
   const retention = new DatabaseSync(dbPath)
   const migrated = retention.prepare('SELECT created_at FROM messages WHERE id = 1').get()
@@ -215,18 +290,39 @@ app.whenReady().then(async () => {
       await waitFor(() => !document.querySelector('#draft').closest('[hidden]'))
       const workspace = document.querySelector('[aria-label="AI conversation"]')
       const buttons = () => [...workspace.querySelectorAll('button')]
+      const picker = workspace.querySelector('.prompt-bar button[aria-label="Choose model"]')
+      picker.click()
+      await waitFor(() => !!workspace.querySelector('.prompt-bar [data-kind=model]'))
+      const options = () => [...workspace.querySelectorAll('.prompt-bar [role=option]')]
+      options().find(option => option.textContent.includes('Gemma 3 1B')).click()
+      await waitFor(() => picker.textContent.includes('Gemma 3 1B') && workspace.querySelector('.ai-model-actions')?.textContent.includes('Download Gemma 3 1B'))
+      picker.click()
+      await waitFor(() => options().length === 3)
+      if (!options().find(option => option.textContent.includes('Gemma 3 1B')).matches('[aria-selected=true]')) throw new Error('Selected model was not marked')
+      options().find(option => option.textContent.includes('Qwen2.5 0.5B')).click()
+      await waitFor(() => picker.textContent.includes('Qwen2.5 0.5B'))
       const draft = workspace.querySelector('textarea')
       const fill = (element, text) => {
         Object.getOwnPropertyDescriptor(Object.getPrototypeOf(element), 'value').set.call(element, text)
         element.dispatchEvent(new Event('input', { bubbles: true }))
       }
       const initialHeight = draft.getBoundingClientRect().height
+      const centered = () => {
+        const input = draft.getBoundingClientRect()
+        const send = workspace.querySelector('.prompt-bar__send').getBoundingClientRect()
+        return Math.abs(input.top + input.height / 2 - send.top - send.height / 2) < 1
+      }
+      if (!centered()) throw new Error('Empty prompt is misaligned')
+      fill(draft, 'Single line')
+      await waitFor(() => localStorage.getItem('lone-x-draft') === 'Single line')
+      if (!centered() || workspace.textContent.includes('Draft saved locally')) throw new Error('Draft layout is incorrect')
       fill(draft, ['one', 'two', 'three'].join(String.fromCharCode(10)))
       await waitFor(() => draft.getBoundingClientRect().height > initialHeight)
       const promptBounds = draft.getBoundingClientRect()
       const sendBounds = workspace.querySelector('.prompt-bar__send').getBoundingClientRect()
       if (sendBounds.left < promptBounds.right || sendBounds.top >= promptBounds.bottom) throw new Error('Send button is outside the prompt row')
       if (getComputedStyle(draft).borderTopWidth !== '0px') throw new Error('Prompt border is visible')
+      if (parseFloat(getComputedStyle(draft.closest('.prompt-bar__field')).borderTopLeftRadius) < 20) throw new Error('Prompt bar is missing its rounded frame')
       const send = async text => {
         fill(draft, text)
         const button = () => buttons().find(item => item.getAttribute('aria-label') === 'Send')
@@ -240,19 +336,28 @@ app.whenReady().then(async () => {
       await waitFor(() => workspace.textContent.includes('Waiting for Ollama'))
       await waitFor(() => workspace.textContent.includes('Streaming response'))
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
+      if (workspace.textContent.includes('Response saved locally')) throw new Error('Response-saved label is still visible')
       await send('Retry this instruction')
       await waitFor(() => workspace.querySelector('[role=alert]')?.textContent.includes('HTTP 404'))
       const retainedDraft = draft.value
       await send('Local retry')
       await waitFor(() => workspace.textContent.includes('Smoke response') && !draft.value)
       const history = await window.loneXAI.history()
-      buttons().find(button => button.textContent === 'New chat').click()
+      const newChat = workspace.querySelector('.ai-history-heading button[aria-label="New Chat"]')
+      if (!newChat || newChat.textContent.trim() || !newChat.title.includes('New Chat')) throw new Error('New Chat icon or tooltip is missing')
+      newChat.click()
       await waitFor(() => workspace.textContent.includes('Start a local conversation'))
+      const previousId = localStorage.getItem('lone-x-current-chat')
+      draft.dispatchEvent(new KeyboardEvent('keydown', { key: 'O', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true }))
+      await waitFor(() => localStorage.getItem('lone-x-current-chat') !== previousId)
       const newHistory = await window.loneXAI.history(localStorage.getItem('lone-x-current-chat'))
-      const older = [...workspace.querySelectorAll('.ai-history button')].find(button => button.textContent === 'Local instruction')
+      const older = [...workspace.querySelectorAll('.ai-history button')].find(button => button.textContent === 'Desktop Chat Testing')
       if (!older) throw new Error('Saved chat is missing')
       older.click()
       await waitFor(() => workspace.querySelector('.ai-transcript').textContent.includes('Smoke response'))
+      if (workspace.querySelector('.ai-chat-delete')) throw new Error('Delete is visible before opening More')
+      workspace.querySelector('.ai-chat-more').click()
+      await waitFor(() => !!workspace.querySelector('.ai-chat-delete'))
       window.confirm = () => false
       const remove = workspace.querySelector('.ai-chat-delete')
       remove.click()

@@ -3,7 +3,7 @@ const { execFile } = require('node:child_process')
 const { DatabaseSync } = require('node:sqlite')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
-const { checkUpdate, downloadUpdate, upToDate } = require('./update.cjs')
+const { checkUpdate, downloadUpdate, upToDate, versionLabel } = require('./update.cjs')
 
 const version = { label: 'PowerShell version', script: '$PSVersionTable.PSVersion.ToString()' }
 const memory = { label: 'Available memory', script: 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List' }
@@ -64,7 +64,7 @@ function registerTerminal(app, rendererPath, requireAccount) {
     try {
       if (command.action === 'version') {
         finish.run('Completed', entry)
-        return { outcome: 'Completed', output: 'Lone X (Beta)' }
+        return { outcome: 'Completed', output: versionLabel }
       }
       if (command.action === 'avail' || command.action === 'update') {
         run.controller = new AbortController()
@@ -72,7 +72,7 @@ function registerTerminal(app, rendererPath, requireAccount) {
         let output
         if (command.action === 'avail') {
           const update = await checkUpdate(signal)
-          output = update ? 'Update available: Lone X (Beta), build ' + update.revision.slice(0, 8) : upToDate
+          output = update ? 'Update available: ' + versionLabel + ', build ' + update.revision.slice(0, 8) : upToDate
         } else {
           output = await downloadUpdate(app.getPath('downloads'), signal)
         }

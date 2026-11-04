@@ -1,16 +1,19 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import FlipCard from './react-bits/FlipCard'
 import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
+import OverviewActivity from './OverviewActivity'
+import Activity from './Activity'
 import Projects from './Projects'
 import LocalTerminal from './LocalTerminal'
 import TaskPlanner from './TaskPlanner'
 import AccountGate from './AccountGate'
 import TechText from './react-bits/TechText'
 import CursorGrid from './react-bits/CursorGrid'
+import Aurora from './react-bits/Aurora'
 import './style.css'
 
 
@@ -19,11 +22,11 @@ const downloadUrl = import.meta.env.VITE_WINDOWS_DOWNLOAD_URL || (__LOCAL_WINDOW
 const desktop = location.protocol === 'file:'
 const pages = [
   { name: 'Overview', icon: LayoutDashboard, detail: 'Your Windows agent workspace at a glance.' },
-  { name: 'AI workspace', icon: MessageSquare, detail: 'Draft an instruction for your agent.' },
+  { name: 'Chat', icon: MessageSquare, detail: 'Draft an instruction for your agent.' },
   { name: 'Projects', icon: Folder, detail: 'Choose a local folder to view its files.' },
   { name: 'Task monitor', icon: ListChecks, detail: 'Ask Raju to draft a task plan and review each step.' },
   { name: 'Terminal', icon: Terminal, detail: 'Run approved Windows PowerShell commands.' },
-  { name: 'Activity', icon: History, detail: 'Execution history will appear here once the local agent runs tasks.' },
+  { name: 'Activity', icon: History, detail: 'Review local chat usage and recent command results.' },
   { name: 'Settings', icon: Settings, detail: 'Manage your workspace appearance.' },
 ] as const
 
@@ -38,6 +41,45 @@ const capabilities = [
   { icon: ShieldCheck, title: 'Approval controls', detail: 'Review sensitive actions and see what the agent attempted in its activity history.' },
   { icon: Terminal, title: 'Development tools', detail: 'Work with project files, PowerShell output, and code changes from one desktop workspace.' },
 ]
+
+const shippedFeatures = [
+  { icon: MessageSquare, title: 'Offline AI chat', detail: 'Raju streams replies from the bundled qwen2.5:0.5b model. Chat runs on your PC without an API key.' },
+  { icon: History, title: 'Saved conversations', detail: 'Start a new chat, reopen or delete an older one, and keep history locally for up to 30 days.' },
+  { icon: Folder, title: 'Local project tools', detail: 'Choose a folder to list its contents, preview UTF-8 text files, and save a new copy.' },
+  { icon: ListChecks, title: 'Reviewable task plans', detail: 'Draft ordered steps and a verification check for each step using the local model.' },
+  { icon: Terminal, title: 'PowerShell diagnostics', detail: 'Run a fixed set of read-only commands, stop a running command, and review its local audit entry.' },
+  { icon: ShieldCheck, title: 'Local account and updates', detail: 'Sign in with a local account and check for verified Windows updates from the terminal.' }
+]
+
+function DesktopDownloads() {
+  return <section id="download" className="section" aria-labelledby="download-heading">
+    <p className="eyebrow">04 / DESKTOP DOWNLOADS</p>
+    <h2 id="download-heading">Download Lone X</h2>
+    <p className="muted">Compare builds and system requirements for your operating system.</p>
+    <div className="download-platforms">
+      <article className="download-platform">
+        <h3>Windows <small className="download-badge">x64 preview available</small></h3>
+        <div className="download-options">
+          <div>
+            <strong>Windows 64-bit (x64)</strong>
+            <p className="muted">Windows 10 version 22H2 or later on an x64 processor. Allow about 2 GB of free storage for the ZIP and extracted files.</p>
+            <p className="muted">The preview uses your CPU for inference. It includes Ollama and the default model. Extract the full ZIP and follow Windows-Setup.txt.</p>
+            {downloadUrl && <a className="primary" href={downloadUrl}><Download size={17} aria-hidden="true" /> Download for Windows x64</a>}
+          </div>
+          <div><strong>Windows 32-bit (x86)</strong><p className="muted">Unavailable. The current preview requires 64-bit Windows.</p></div>
+        </div>
+      </article>
+      <article className="download-platform">
+        <h3>Mac <small className="download-badge">Coming soon</small></h3>
+        <div className="download-options">
+          <div><strong>Mac with Apple silicon (ARM64)</strong><p className="muted">Build unavailable.</p></div>
+          <div><strong>Mac with Intel (x64)</strong><p className="muted">Build unavailable.</p></div>
+          <p className="muted">Supported macOS versions and hardware requirements will be listed once a Mac build is tested.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+}
 
 function LogoOrbit({ background }: { background?: ReactNode }) {
   return <div className="command-art" role="img" aria-label="Lone X logo surrounded by orbiting Windows utility icons">
@@ -58,46 +100,54 @@ function App() {
   const [theme, setTheme] = usePreference('lone-x-theme', matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
   const [draft, setDraft] = usePreference('lone-x-draft', '')
   const [page, setPage] = useState<(typeof pages)[number]>(pages[0])
+  const work = useRef<HTMLElement>(null)
+  useLayoutEffect(() => { if (work.current) work.current.scrollTop = 0 }, [page])
   const reduceMotion = useReducedMotion()
   useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   const themeButton = <SquishSwitch ariaLabel="Light theme" thumbContent={theme === 'light' ? <Sun size={14} /> : <Moon size={14} />} checked={theme === 'light'} onChange={checked => setTheme(checked ? 'light' : 'dark')} width={48} height={28} trackColor="var(--line)" trackOnColor="var(--accent)" thumbColor="var(--text)" thumbOnColor="var(--text)" />
   const brand = <span className="brand"><img src={logo} alt="" /> Lone X</span>
 
   if (desktop) {
-    return <AccountGate><div className="shell">
+    const inChat = page === pages[1]
+    return <AccountGate><div className={inChat ? 'shell shell-chat' : 'shell'}>
       <aside className="rail">
-        <div className="rail-brand">{brand}<span>DESKTOP AGENT</span></div>
+        <div className="rail-brand">{inChat ? <img src={logo} alt="Lone X" /> : <>{brand}<span>DESKTOP AGENT</span></>}</div>
         <p className="eyebrow">WORKSPACE</p>
-        <nav aria-label="Workspace">{pages.slice(0, 2).map(item => <button key={item.name} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" />{item.name === 'AI workspace' ? 'Chat' : item.name}</button>)}</nav>
-        <button className="rail-settings" aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" />Settings</button>
+        <nav aria-label="Workspace">{pages.slice(0, 2).map(item => {
+          const label = item.name
+          return <button key={item.name} aria-label={label} title={inChat ? label : undefined} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" /><span>{label}</span></button>
+        })}</nav>
+        <button className="rail-settings" aria-label="Settings" title={inChat ? 'Settings' : undefined} aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" /><span>Settings</span></button>
         <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div>{themeButton}</div>
       </aside>
-      <main className={page.name === 'AI workspace' ? 'work work-chat' : 'work'}>
+      <main ref={work} className={inChat ? 'work work-chat' : 'work'}>
         <div className="work-content">
-          {(page.name === 'AI workspace' || page.name === 'Terminal') ? null : page.name === 'Overview' ? <>
+          {(inChat || page.name === 'Terminal') ? null : page.name === 'Overview' ? <>
             <section className="command-banner" aria-labelledby="overview-heading">
               <div className="command-copy">
-                <p className="eyebrow">LONE X / WINDOWS WORKSPACE</p>
                 <h1 id="overview-heading">Overview</h1>
                 <p>Draft an instruction or check task status from your local workspace.</p>
                 <button className="command-cta" onClick={() => setPage(pages[1])}>
-                  {draft ? 'Resume instruction' : 'Open AI workspace'} <ArrowUpRight size={16} aria-hidden="true" />
+                  {draft ? 'Resume instruction' : 'Open Chat'} <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               </div>
               <LogoOrbit />
             </section>
-            <section className="launch-panel" aria-labelledby="launch-heading">
-              <h2 id="launch-heading">Quick access</h2>
-              {[pages[1], pages[6]].map(item => (
-                <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
-                  <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
-                  <span><strong>{item.name}</strong><small>{item.detail}</small></span>
-                  <ArrowRight size={16} aria-hidden="true" />
-                </button>
-              ))}
-            </section>
+            <div className="overview-panels">
+              <section className="launch-panel" aria-labelledby="launch-heading">
+                <h2 id="launch-heading">Quick access</h2>
+                {[pages[1], pages[6]].map(item => (
+                  <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
+                    <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
+                    <span><strong>{item.name}</strong><small>{item.detail}</small></span>
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </button>
+                ))}
+              </section>
+              <OverviewActivity />
+            </div>
           </> : <>
-            <div className="work-heading"><p className="eyebrow">LONE X / WORKSPACE</p><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
+            <div className="work-heading"><h1>{page.name}</h1><p className="muted">{page.detail}</p></div>
             {page.name === 'Settings' && <>
               <section className="launch-panel" aria-label="Workspace tools">
                 <h2>Workspace tools</h2>
@@ -112,24 +162,31 @@ function App() {
           <div hidden={page.name !== 'Task monitor'}><TaskPlanner /></div>
           <div hidden={page.name !== 'Terminal'}><LocalTerminal /></div>
           <div hidden={page.name !== 'Projects'}><Projects /></div>
-          <div hidden={page.name !== 'AI workspace'}><AIWorkspace draft={draft} setDraft={setDraft} /></div>
+          {page.name === 'Activity' && <Activity />}
+          <div hidden={!inChat}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>
     </div></AccountGate>
   }
 
-  const cursorGrid = (cellSize: number) => reduceMotion ? null : (
+  const showCursorGrid = theme === 'dark' && !reduceMotion
+  const cursorGrid = (cellSize: number) => showCursorGrid ? (
     <CursorGrid cellSize={cellSize} radius={125} gridOpacity={0.3} fillOpacity={0.15} clickPulse={false}
-      lightMode={theme === 'light'} color={theme === 'light' ? '#174c99' : '#86d8ef'} />
-  )
+      color="#86d8ef" />
+  ) : null
 
   return <div className="site">
-    {!reduceMotion && <div className="site-cursor-grid" aria-hidden="true">{cursorGrid(36)}</div>}
+    {showCursorGrid && <div className="site-cursor-grid" aria-hidden="true">{cursorGrid(36)}</div>}
+    {theme === 'light' && !reduceMotion && <div className="site-aurora" aria-hidden="true">
+      <Aurora lightMode colorStops={['#97b5d3', '#b6d3db', '#ead8bb']} amplitude={0.75} blend={0.7}
+        height={0.58} speed={0.45} opacity={0.75} layers={2} mouseInteraction={false} intro={false} dpr={1.5} />
+    </div>}
     <header className="top">
       <a href="./" aria-label="Lone X home">{brand}</a>
       <nav aria-label="Site">
         <a href="#workspace">Workspace</a>
         <a href="#capabilities">Capabilities</a>
+        <a href="#features">Features</a>
         <a href="#download">Download</a>
         {themeButton}
       </nav>
@@ -164,12 +221,14 @@ function App() {
           front={<div className="card feature-face"><Icon aria-hidden="true" /><strong>{title}</strong><span>Flip for details</span></div>}
           back={<div className="card feature-face"><strong>{title}</strong><span>{detail}</span></div>} />)}
       </div></section>
-      <section id="download" className="section">
-        <p className="eyebrow">03 / WINDOWS DESKTOP</p>
-        <h2>Download Lone X</h2>
-        <p className="muted">Try the desktop preview on Windows x64. Extract the ZIP and open Lone X.exe.</p>
-        {downloadUrl ? <a className="primary" href={downloadUrl}><Download size={17} aria-hidden="true" /> Download for Windows</a> : <p className="muted">The Windows download will appear here once the preview is published.</p>}
+      <section id="features" className="section">
+        <p className="eyebrow">03 / AVAILABLE IN THE PREVIEW</p>
+        <h2>Features of LoneX</h2>
+        <div className="cards">{shippedFeatures.map(({ icon: Icon, title, detail }) => (
+          <article className="card" key={title}><Icon size={22} aria-hidden="true" /><strong>{title}</strong><span>{detail}</span></article>
+        ))}</div>
       </section>
+      <DesktopDownloads />
     </main>
     <footer>Developed By Raju · © {new Date().getFullYear()}</footer>
   </div>

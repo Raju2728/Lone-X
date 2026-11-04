@@ -15,6 +15,22 @@ The ZIP includes Ollama's CPU runtime and the qwen2.5:0.5b model. Local chat
 works offline after extraction and requires no separate installer or API key.
 Chat history is stored on this PC and expires after 30 days.
 
+OPTIONAL MODELS
+
+Open the model picker beside Send in Chat. Select Qwen2.5 Coder 0.5B or
+Gemma 3 1B and click Download if prompted. Internet is needed for the first
+download. Afterward, both models run offline without an API key.
+
+For a separate Ollama installation, start Ollama and run these commands
+in PowerShell for the models you want:
+  ollama pull qwen2.5:0.5b
+  ollama pull qwen2.5-coder:0.5b
+  ollama pull gemma3:1b
+  ollama list
+
+Use the in-app download button with the ZIP. The bundled runtime stores
+its models separately from a standalone Ollama installation.
+
 TROUBLESHOOTING
 
 If Lone X does not start, extract the entire ZIP before opening the executable.

@@ -1,12 +1,12 @@
 const { BrowserWindow, dialog, ipcMain } = require('electron')
-const { open, opendir, writeFile } = require('node:fs/promises')
+const { mkdtemp, open, opendir, rm, rmdir, writeFile } = require('node:fs/promises')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 
 function registerProjects(rendererPath, requireAccount) {
   const pending = new Set()
   const previews = new WeakMap()
-  const handle = (channel, action) => ipcMain.handle(channel, async event => {
+  const handle = (channel, action) => ipcMain.handle(channel, async (event, input) => {
     const url = new URL(event.senderFrame?.url || 'about:blank')
     if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
       throw new Error('Invalid project request origin.')
@@ -16,7 +16,7 @@ function registerProjects(rendererPath, requireAccount) {
     if (!window || pending.has(window)) return null
     pending.add(window)
     try {
-      return await action(window)
+      return await action(window, input)
     } finally {
       pending.delete(window)
     }
@@ -74,15 +74,46 @@ function registerProjects(rendererPath, requireAccount) {
     }
   })
 
-  handle('projects:save-copy', async window => {
+  handle('projects:create-starter', async window => {
+    const result = await dialog.showOpenDialog(window, {
+      title: 'Choose where to create a new HTML starter project',
+      properties: ['openDirectory']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const folder = await mkdtemp(path.join(result.filePaths[0], 'lone-x-starter-'))
+    const files = new Map([
+      ['index.html', '<!doctype html>\n<html lang="en">\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>Lone X starter</title>\n<link rel="stylesheet" href="styles.css">\n<main><h1>Your starter project is ready.</h1></main>\n</html>\n'],
+      ['styles.css', 'body { font-family: system-ui, sans-serif; margin: 3rem; }\n'],
+      ['README.md', '# Lone X starter\n\nOpen index.html in a browser to preview the project.\n']
+    ])
+    const created = []
+    try {
+      for (const [name, content] of files) {
+        const filename = path.join(folder, name)
+        const file = await open(filename, 'wx')
+        created.push(filename)
+        try { await file.writeFile(content, 'utf8') } finally { await file.close() }
+      }
+      return { name: path.basename(folder), entries: [...files.keys()].map(name => ({ name, kind: 'File' })), truncated: false }
+    } catch (error) {
+      await Promise.allSettled(created.map(filename => rm(filename, { force: true })))
+      await rmdir(folder).catch(() => {})
+      throw error
+    }
+  })
+
+  handle('projects:save-copy', async (window, editedText) => {
     const bytes = previews.get(window)
     if (!bytes) throw new Error('Preview a text file first.')
+    if (editedText !== undefined && (typeof editedText !== 'string' || editedText.includes('\0') || Buffer.byteLength(editedText) > 128 * 1024)) {
+      throw new Error('The edited text must be UTF-8 and at most 128 KB.')
+    }
     const result = await dialog.showSaveDialog(window, {
       title: 'Save a new copy of the preview',
       defaultPath: 'preview-copy.txt'
     })
     if (result.canceled || !result.filePath) return null
-    await writeFile(result.filePath, bytes, { flag: 'wx' })
+    await writeFile(result.filePath, editedText ?? bytes, { flag: 'wx' })
     return path.basename(result.filePath)
   })
 }

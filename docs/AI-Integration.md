@@ -30,3 +30,18 @@ The chat uses `qwen2.5:0.5b` and displays the assistant as Raju. **New chat** st
 The ZIP bundles the CPU build of Ollama and the `qwen2.5:0.5b` model. Extract the entire ZIP before launching Lone X. The app starts its bundled Ollama on a private loopback port when chat first needs it. End users can chat offline without installing Ollama separately.
 
 To build the ZIP, install Ollama on the packaging PC and run `ollama pull qwen2.5:0.5b` first. The packaging script copies the CPU runtime, model manifest, and verified blobs. Set `LONEX_OLLAMA_RUNTIME_DIR` and `OLLAMA_MODELS` if their locations differ from the Windows defaults.
+
+## Choose a chat model
+
+Chat defaults to the bundled Qwen2.5 0.5B. Select **Qwen2.5 Coder 0.5B** or **Gemma 3 1B** in the Prompt Bar and click the download button if the model is missing. All three run locally once installed.
+
+If you use your own Ollama installation with the development build, start Ollama and install models from PowerShell:
+
+```powershell
+ollama pull qwen2.5:0.5b
+ollama pull qwen2.5-coder:0.5b
+ollama pull gemma3:1b
+ollama list
+```
+
+Use the Chat download button in the portable ZIP. Its bundled Ollama instance uses a model directory inside the extracted app.

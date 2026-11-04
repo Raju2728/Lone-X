@@ -9,10 +9,12 @@ const releaseUrl = 'https://api.github.com/repos/Raju2728/Lone-X/releases/tags/d
 const name = 'Lone-X-Windows.zip'
 const downloadUrl = 'https://github.com/Raju2728/Lone-X/releases/download/desktop-preview/' + name
 const upToDate = 'LoneX is Up-To-Date'
+const versionLabel = 'Lone X (Beta)'
 const maxSize = 2 * 1024 * 1024 * 1024
 
-async function checkUpdate(signal, request = fetch, buildInfo = path.join(__dirname, '../build-info.json')) {
+async function checkUpdate(signal, request = fetch, buildInfo = path.join(__dirname, '../build-info.json'), requireCurrentBuild = false) {
   const current = await readFile(buildInfo, 'utf8').then(JSON.parse).catch(() => ({}))
+  if (requireCurrentBuild && !/^[a-f0-9]{40}$/.test(current.revision ?? '')) return null
   const release = await request(releaseUrl, { signal, redirect: 'error' })
   if (!release.ok) throw new Error('GitHub could not provide the Windows preview release.')
   const { assets } = await release.json()
@@ -61,4 +63,4 @@ async function downloadUpdate(downloads, signal, request = fetch, buildInfo) {
   }
 }
 
-module.exports = { checkUpdate, downloadUpdate, upToDate }
+module.exports = { checkUpdate, downloadUpdate, upToDate, versionLabel }

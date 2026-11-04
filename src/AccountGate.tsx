@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 
 type Credentials = { email: string; password: string }
+const startupMinimumMs = 1800
 declare global {
   interface Window {
     loneXAccount: {
@@ -25,10 +26,20 @@ export default function AccountGate({ children }: { children: ReactNode }) {
   const api = window.loneXAccount
 
   useEffect(() => {
+    let mounted = true
+    let timer: number | undefined
+    const startedAt = performance.now()
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
     api.status().then(status => {
-      setEmailReady(status.emailReady)
-      setMode(status.signedIn ? 'open' : status.exists ? 'login' : 'create')
-    }).catch(() => setError('Could not load the local account. Restart Lone X and try again.'))
+      if (!mounted) return
+      timer = window.setTimeout(() => {
+        setEmailReady(status.emailReady)
+        setMode(status.signedIn ? 'open' : status.exists ? 'login' : 'create')
+      }, reducedMotion ? 0 : Math.max(0, startupMinimumMs - (performance.now() - startedAt)))
+    }).catch(() => {
+      if (mounted) setError('Could not load the local account. Restart Lone X and try again.')
+    })
+    return () => { mounted = false; window.clearTimeout(timer) }
   }, [api])
 
   useEffect(() => {
@@ -85,12 +96,23 @@ export default function AccountGate({ children }: { children: ReactNode }) {
     })
   }
 
-  if (mode === 'open') return <>{message && <p className="account-notice" role="status">{message}</p>}{children}</>
+  if (mode === 'open') return <div className="desktop-session">{message && <p className="account-notice" role="status">{message}</p>}{children}</div>
+  if (mode === 'loading') return <main className="startup-screen">
+    <div className="startup-content">
+      <div className={error ? 'startup-mark startup-mark-static' : 'startup-mark'} aria-hidden="true">
+        <span className="startup-orbit startup-orbit-outer" />
+        <span className="startup-orbit startup-orbit-inner" />
+        <img src="./logo.png" alt="" />
+      </div>
+      <h1>Lone X</h1>
+      {error ? <p role="alert">{error}</p> : <p role="status">Opening workspace…</p>}
+    </div>
+  </main>
   return <main className="account-screen">
     <section className="panel account-panel">
       <img src="./logo.png" alt="Lone X" />
       <h1>{mode === 'create' ? 'Create your local account' : mode === 'reset' ? 'Reset your password' : 'Sign in to Lone X'}</h1>
-      {mode !== 'loading' && <form onSubmit={submit}>
+      <form onSubmit={submit}>
         <label>Email <input type="email" required value={email} onChange={event => setEmail(event.target.value)} autoComplete="username" /></label>
         {mode === 'reset' && <label>Reset code <input required inputMode="numeric" maxLength={6} value={code} onChange={event => setCode(event.target.value)} autoComplete="one-time-code" /></label>}
         <label>{mode === 'reset' ? 'New password' : 'Password'} <input type="password" required minLength={8} maxLength={256} value={password} onChange={event => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
@@ -101,7 +123,7 @@ export default function AccountGate({ children }: { children: ReactNode }) {
           setPassword('')
           setMessage('Check your email for a reset code.')
         })}>Email a reset code</button>}
-      </form>}
+      </form>
       {message && <p role="status">{message}</p>}
       {error && <p role="alert" className="chat-error">{error}</p>}
     </section>

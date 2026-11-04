@@ -11,6 +11,7 @@ type Message = { role: 'user' | 'assistant'; content: string }
 declare global {
   interface Window {
     loneXAI: {
+      plan: (task: string) => Promise<{ summary: string; steps: { action: string; verify: string }[] } | null>
       history: (id?: string) => Promise<Message[]>
       models: () => Promise<string[]>
       send: (input: { model: string; text: string; chatId: string }) => Promise<Message[] | null>

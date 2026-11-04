@@ -20,10 +20,10 @@ async function* readLines(body) {
   if (pending.trim()) yield pending.trimEnd()
 }
 
-async function streamReply(model, messages, onDelta, signal, request = fetch, endpoint = ollama) {
+async function streamReply(model, messages, onDelta, signal, request = fetch, endpoint = ollama, format) {
   const response = await request(endpoint + '/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal, redirect: 'error',
-    body: JSON.stringify({ model, messages, stream: true, options: { num_predict: 4096 } })
+    body: JSON.stringify({ model, messages, format, stream: true, options: { num_predict: 4096 } })
   }).catch(() => { throw new Error('Could not reach Ollama. Start it on this PC and try again.') })
   if (!response.ok || !response.body) throw new Error('Ollama returned HTTP ' + response.status + '. Check the selected model.')
   let complete = false
@@ -39,6 +39,42 @@ async function streamReply(model, messages, onDelta, signal, request = fetch, en
     }
   }
   if (!complete) throw new Error('The response stream ended before completion.')
+}
+
+const planSchema = {
+  type: 'object',
+  required: ['summary', 'steps'],
+  additionalProperties: false,
+  properties: {
+    summary: { type: 'string' },
+    steps: {
+      type: 'array', minItems: 1, maxItems: 8,
+      items: {
+        type: 'object', required: ['action', 'verify'], additionalProperties: false,
+        properties: { action: { type: 'string' }, verify: { type: 'string' } }
+      }
+    }
+  }
+}
+
+async function generatePlan(task, signal, endpoint = ollama) {
+  let output = ''
+  const messages = [
+    { role: 'system', content: 'Draft a practical plan for the user task. Return a short summary and 1 to 8 ordered steps. Each step has an action and a check to verify success. Describe proposed actions only. Do not claim that work has happened.' },
+    { role: 'user', content: task }
+  ]
+  await streamReply('qwen2.5:0.5b', messages, delta => {
+    output += delta
+    if (output.length > 16000) throw new Error('The plan was too long. Try a narrower task.')
+  }, signal, fetch, endpoint, planSchema)
+  const validText = (value, limit) => typeof value === 'string' && !!value.trim() && value.length <= limit
+  let plan
+  try { plan = JSON.parse(output) } catch {}
+  if (!validText(plan?.summary, 600) || !Array.isArray(plan.steps) || plan.steps.length < 1 || plan.steps.length > 8 ||
+      plan.steps.some(step => !validText(step?.action, 600) || !validText(step?.verify, 600))) {
+    throw new Error('Ollama did not produce a usable plan. Try describing a smaller task.')
+  }
+  return { summary: plan.summary.trim(), steps: plan.steps.map(step => ({ action: step.action.trim(), verify: step.verify.trim() })) }
 }
 
 function registerAI(app, rendererPath, requireAccount) {
@@ -127,6 +163,24 @@ function registerAI(app, rendererPath, requireAccount) {
     }
   })
 
+  handle('plan', async (event, task) => {
+    if (typeof task !== 'string' || !task.trim() || task.length > 2000) throw new Error('Enter a task of up to 2,000 characters.')
+    if (active) throw new Error('Wait for the current response.')
+    const controller = new AbortController()
+    active = { sender: event.sender, controller }
+    try {
+      const endpoint = await runtime()
+      controller.signal.throwIfAborted()
+      const plan = await generatePlan(task.trim(), AbortSignal.any([controller.signal, AbortSignal.timeout(120000)]), endpoint)
+      return controller.signal.aborted ? null : plan
+    } catch (error) {
+      if (controller.signal.aborted) return null
+      throw error
+    } finally {
+      active = undefined
+    }
+  })
+
   handle('send', async (event, input) => {
     const { model, text } = input ?? {}
     const id = chatId(input?.chatId)
@@ -167,4 +221,4 @@ function registerAI(app, rendererPath, requireAccount) {
   })
 }
 
-module.exports = { registerAI, streamReply }
+module.exports = { registerAI, streamReply, generatePlan }

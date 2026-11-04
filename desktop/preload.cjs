@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('loneXAI', {
   deleteChat: id => ipcRenderer.invoke('ai:delete-chat', id),
   stop: () => ipcRenderer.invoke('ai:stop'),
   send: input => ipcRenderer.invoke('ai:send', input),
+  plan: task => ipcRenderer.invoke('ai:plan', task),
   onDelta: callback => {
     const listener = (_event, delta) => callback(delta)
     ipcRenderer.on('ai:delta', listener)

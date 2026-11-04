@@ -23,3 +23,7 @@ Users can save the preview bytes to a new file selected in the Windows save dial
 Settings > Terminal now runs two fixed, read-only PowerShell diagnostics after a native Run once approval. Local SQLite records the command label and outcome. Stop cancels a pending approval or terminates the current PowerShell process. Arbitrary commands and autonomous execution are outside this increment.
 
 Milestone 3 checks passed for approved file operations, the fixed PowerShell command list, native approval and denial, SQLite audit history, and stopping a real PowerShell process before launch and during execution. The running-stop test uses a harmless sleep command in an isolated profile.
+
+## Milestone 4 — In progress
+
+Settings > Task monitor drafts a local Ollama plan with up to eight ordered steps and a verification check for each step. The renderer displays validated text for review. Drafting does not grant permissions or execute tools. The Windows smoke test checks structured plan parsing and rejection of malformed replies. A live qwen2.5:0.5b planning request also passed.

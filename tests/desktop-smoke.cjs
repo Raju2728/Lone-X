@@ -8,6 +8,14 @@ global.fetch = (url, options) => {
     return Promise.resolve(Response.json({ models: [{ name: 'smoke-model' }] }))
   }
   if (url === 'http://127.0.0.1:11434/api/chat') {
+    const payload = JSON.parse(options.body)
+    if (payload.format) {
+      assert.equal(payload.format.type, 'object')
+      const content = payload.messages.at(-1).content === 'Invalid plan fixture'
+        ? '{"summary":"Missing steps"}'
+        : JSON.stringify({ summary: 'Inspect the project', steps: [{ action: 'List project files', verify: 'Check the expected files appear' }] })
+      return Promise.resolve(new Response(JSON.stringify({ message: { content }, done: true })))
+    }
     if (JSON.parse(options.body).messages.at(-1).content === 'Retry this instruction') return Promise.resolve(new Response('', { status: 404 }))
     assert.equal(JSON.parse(options.body).model, 'qwen2.5:0.5b')
     const encoder = new TextEncoder()
@@ -86,6 +94,11 @@ app.whenReady().then(async () => {
     })()
   `)
   stopRunningCommand = () => window.webContents.executeJavaScript('window.loneXTerminal.stop()')
+  const plan = await window.webContents.executeJavaScript("window.loneXAI.plan('Inspect project')")
+  assert.equal(plan.summary, 'Inspect the project')
+  assert.deepEqual(plan.steps, [{ action: 'List project files', verify: 'Check the expected files appear' }])
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.plan('Invalid plan fixture')"), /usable plan/)
+  console.log('Structured local planning and malformed output rejection passed.')
   let approvals = 0
   dialog.showMessageBox = async () => {
     approvals++

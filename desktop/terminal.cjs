@@ -1,12 +1,20 @@
-const { BrowserWindow, dialog, ipcMain } = require('electron')
+const { ipcMain } = require('electron')
 const { execFile } = require('node:child_process')
 const { DatabaseSync } = require('node:sqlite')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 
+const version = { label: 'PowerShell version', script: '$PSVersionTable.PSVersion.ToString()' }
+const memory = { label: 'Available memory', script: 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List' }
+const location = { label: 'Current location', script: 'Get-Location' }
 const commands = new Map([
-  ['version', { label: 'PowerShell version', script: '$PSVersionTable.PSVersion.ToString()' }],
-  ['memory', { label: 'Available memory', script: 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List' }]
+  ['version', version],
+  [version.script.toLowerCase(), version],
+  ['memory', memory],
+  [memory.script.toLowerCase(), memory],
+  ['get-date', { label: 'Current date and time', script: 'Get-Date' }],
+  ['get-location', location],
+  ['pwd', location]
 ])
 
 function registerTerminal(app, rendererPath, requireAccount) {
@@ -32,7 +40,6 @@ function registerTerminal(app, rendererPath, requireAccount) {
   function stop() {
     if (!active) return
     active.stopped = true
-    active.approval.abort()
     active.child?.kill()
   }
 
@@ -40,25 +47,13 @@ function registerTerminal(app, rendererPath, requireAccount) {
   handle('stop', sender => { if (active?.sender === sender) stop() })
   handle('history', () => history.all())
   handle('run', async (sender, id) => {
-    const command = commands.get(id)
+    const command = typeof id === 'string' && id.length <= 300 ? commands.get(id.trim().toLowerCase()) : undefined
     if (!command) throw new Error('This command is outside the approved command list.')
-    if (active) throw new Error('A terminal command is already pending.')
-    const run = { sender, stopped: false, child: null, approval: new AbortController() }
-    const entry = audit.run(Date.now(), command.label, 'Pending').lastInsertRowid
+    if (active) throw new Error('A terminal command is already running.')
+    const run = { sender, stopped: false, child: null }
+    const entry = audit.run(Date.now(), command.label, 'Running').lastInsertRowid
     active = run
     try {
-      const approval = await dialog.showMessageBox(BrowserWindow.fromWebContents(sender), {
-        signal: run.approval.signal, type: 'question', title: 'Approve local PowerShell command',
-        message: command.label, detail: command.script,
-        buttons: ['Cancel', 'Run once'], defaultId: 0, cancelId: 0, noLink: true
-      })
-      if (run.stopped || approval.response !== 1) {
-        const outcome = run.stopped ? 'Stopped' : 'Declined'
-        finish.run(outcome, entry)
-        return { outcome, output: '' }
-      }
-      requireAccount(sender)
-      finish.run('Running', entry)
       const result = await new Promise(resolve => {
         run.child = execFile(binary, ['-NoProfile', '-NonInteractive', '-Command', command.script],
           { windowsHide: true, timeout: 15000, maxBuffer: 64 * 1024 },

@@ -1,0 +1,25 @@
+LONE X - WINDOWS SETUP
+
+1. Download Lone-X-Windows.zip on a Windows x64 PC.
+2. Right-click the ZIP, choose Extract All, and select a folder you can write to.
+3. Open the extracted Lone X folder and double-click Lone X.exe.
+   Keep the resources folder and the other extracted files beside Lone X.exe.
+4. On first launch, create your local account with an email address and a
+   password of at least 8 characters. Sign-in lasts for three days on this PC.
+5. Select Chat in the sidebar and send a message to Raju. The first response
+   may take longer while the bundled model loads.
+
+LOCAL AI
+
+The ZIP includes Ollama's CPU runtime and the qwen2.5:0.5b model. Local chat
+works offline after extraction and requires no separate installer or API key.
+Chat history is stored on this PC and expires after 30 days.
+
+TROUBLESHOOTING
+
+If Lone X does not start, extract the entire ZIP before opening the executable.
+If chat reports that the bundled runtime cannot start, make sure the resources
+folder is present, then close and reopen Lone X.
+
+Email confirmation and password reset by email require SMTP setup.
+Project help: https://github.com/Raju2728/Lone-X

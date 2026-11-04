@@ -99,38 +99,54 @@ app.whenReady().then(async () => {
   assert.deepEqual(plan.steps, [{ action: 'List project files', verify: 'Check the expected files appear' }])
   await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.plan('Invalid plan fixture')"), /usable plan/)
   console.log('Structured local planning and malformed output rejection passed.')
-  let approvals = 0
-  dialog.showMessageBox = async () => {
-    approvals++
-    if (approvals === 3) {
-      await window.webContents.executeJavaScript('window.loneXTerminal.stop()')
-    }
-    return { response: approvals === 1 ? 0 : 1 }
-  }
+  dialog.showMessageBox = async () => { throw new Error('Allowlisted commands should run without a dialog') }
   const terminal = await window.webContents.executeJavaScript(`
     (async () => {
       const terminal = window.loneXTerminal
       let invalid = false
       try { await terminal.run('Remove-Item') } catch { invalid = true }
-      const declined = await terminal.run('version')
       const completed = await terminal.run('version')
-      const stopped = await terminal.run('version')
       const stoppedRunning = await terminal.run('memory')
-      return { invalid, declined, completed, stopped, stoppedRunning, history: await terminal.history() }
+      return { invalid, completed, stoppedRunning, history: await terminal.history() }
     })()
   `)
   assert.equal(terminal.invalid, true)
-  assert.equal(approvals, 4)
-  assert.equal(terminal.declined.outcome, 'Declined')
   assert.equal(terminal.completed.outcome, 'Completed')
   assert.match(terminal.completed.output, /^\d+\./)
-  assert.equal(terminal.stopped.outcome, 'Stopped')
   assert.equal(terminal.stoppedRunning.outcome, 'Stopped')
   assert.equal(terminal.stoppedRunning.output, '')
   assert.equal(runningChild.killed, true)
   assert.throws(() => process.kill(runningChild.pid, 0), { code: 'ESRCH' })
-  assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Stopped', 'Completed', 'Declined'])
-  console.log('PowerShell allowlist, approval, execution, stop before launch and during execution, and audit passed.')
+  assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed'])
+  console.log('PowerShell allowlist, prompt-free execution, emergency stop, and audit passed.')
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      const waitFor = async predicate => {
+        for (let attempt = 0; attempt < 100; attempt++) {
+          if (predicate()) return
+          await new Promise(resolve => setTimeout(resolve, 25))
+        }
+        throw new Error('PowerShell console did not reach expected state')
+      }
+      document.querySelector('.rail-settings').click()
+      await waitFor(() => !!document.querySelector('.launch-panel button'))
+      const terminalLink = [...document.querySelectorAll('.launch-panel button')].find(button => button.querySelector('strong')?.textContent === 'Terminal')
+      terminalLink.click()
+      const input = document.querySelector('#ps-command')
+      await waitFor(() => !input.closest('[hidden]'))
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'Get-Date')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitFor(() => input.value === 'Get-Date')
+      input.form.requestSubmit()
+      await waitFor(() => !!document.querySelector('.ps-entry pre') && !input.readOnly)
+      if (document.querySelector('.ps-entry .ps-error')) throw new Error('Get-Date failed')
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
+      await waitFor(() => input.value === 'Get-Date')
+      document.querySelector('aside nav button').click()
+      await waitFor(() => document.querySelector('h1')?.textContent === 'Overview')
+    })()
+  `)
+  console.log('Typed PowerShell command, console output, and Up-arrow history passed.')
   console.log('Local account creation and locked workspace IPC passed.')
   const result = await window.webContents.executeJavaScript(`
     (async () => {

@@ -13,6 +13,7 @@ try {
         $bundle = New-Item -ItemType Directory (Join-Path $stage.FullName 'Lone X')
         Get-ChildItem -LiteralPath $runtime | Copy-Item -Destination $bundle.FullName -Recurse
         Rename-Item -LiteralPath (Join-Path $bundle.FullName 'electron.exe') -NewName 'Lone X.exe'
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Windows-Setup.txt') -Destination $bundle.FullName
         $app = New-Item -ItemType Directory (Join-Path $bundle.FullName 'resources/app')
         Copy-Item desktop -Destination $app.FullName -Recurse
         $dependencies = New-Item -ItemType Directory (Join-Path $app.FullName 'node_modules')

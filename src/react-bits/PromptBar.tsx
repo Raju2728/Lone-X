@@ -723,7 +723,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
             closeMenus();
             setActive(0);
           }}
-          onFocus={closeMenus}
+          onFocus={event => {
+            closeMenus();
+            const input = event.currentTarget;
+            requestAnimationFrame(() => {
+              if (document.activeElement === input) {
+                const end = input.value.length;
+                input.setSelectionRange(end, end);
+              }
+            });
+          }}
           onKeyDown={onKeyDown}
         />
 

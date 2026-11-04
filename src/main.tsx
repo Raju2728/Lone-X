@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowDown, Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
+import { Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
-import GlareHover from './react-bits/GlareHover'
 import FlipCard from './react-bits/FlipCard'
-import LatticeLoader from './react-bits/LatticeLoader'
 import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
 import Projects from './Projects'
@@ -12,6 +10,7 @@ import LocalTerminal from './LocalTerminal'
 import TaskPlanner from './TaskPlanner'
 import AccountGate from './AccountGate'
 import TechText from './react-bits/TechText'
+import CursorGrid from './react-bits/CursorGrid'
 import './style.css'
 
 
@@ -23,7 +22,7 @@ const pages = [
   { name: 'AI workspace', icon: MessageSquare, detail: 'Draft an instruction for your agent.' },
   { name: 'Projects', icon: Folder, detail: 'Choose a local folder to view its files.' },
   { name: 'Task monitor', icon: ListChecks, detail: 'Ask Raju to draft a task plan and review each step.' },
-  { name: 'Terminal', icon: Terminal, detail: 'Run approved read-only PowerShell commands and review their results.' },
+  { name: 'Terminal', icon: Terminal, detail: 'Run approved Windows PowerShell commands.' },
   { name: 'Activity', icon: History, detail: 'Execution history will appear here once the local agent runs tasks.' },
   { name: 'Settings', icon: Settings, detail: 'Manage your workspace appearance.' },
 ] as const
@@ -40,9 +39,22 @@ const capabilities = [
   { icon: Terminal, title: 'Development tools', detail: 'Work with project files, PowerShell output, and code changes from one desktop workspace.' },
 ]
 
+function LogoOrbit({ background }: { background?: ReactNode }) {
+  return <div className="command-art" role="img" aria-label="Lone X logo surrounded by orbiting Windows utility icons">
+    {background && <div className="orbit-cursor-grid" aria-hidden="true">{background}</div>}
+    <div className="command-orbit" aria-hidden="true">
+      <img src={logo} alt="" width={1254} height={1254} />
+      <div className="command-satellites">
+        {[Folder, Terminal, LayoutDashboard, Settings].map((Icon, index) =>
+          <div className={'command-track track-' + index} key={index}><span><Icon size={16} /></span></div>
+        )}
+      </div>
+    </div>
+    <span className="command-coordinate" aria-hidden="true">LX / 01</span>
+  </div>
+}
+
 function App() {
-  const [logoFlipped, setLogoFlipped] = useState(false)
-  const [logoStatus, setLogoStatus] = useState<'working' | 'done' | 'error'>('working')
   const [theme, setTheme] = usePreference('lone-x-theme', matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
   const [draft, setDraft] = usePreference('lone-x-draft', '')
   const [page, setPage] = useState<(typeof pages)[number]>(pages[0])
@@ -62,7 +74,7 @@ function App() {
       </aside>
       <main className={page.name === 'AI workspace' ? 'work work-chat' : 'work'}>
         <div className="work-content">
-          {page.name === 'AI workspace' ? null : page.name === 'Overview' ? <>
+          {(page.name === 'AI workspace' || page.name === 'Terminal') ? null : page.name === 'Overview' ? <>
             <section className="command-banner" aria-labelledby="overview-heading">
               <div className="command-copy">
                 <p className="eyebrow">LONE X / WINDOWS WORKSPACE</p>
@@ -72,17 +84,7 @@ function App() {
                   {draft ? 'Resume instruction' : 'Open AI workspace'} <ArrowUpRight size={16} aria-hidden="true" />
                 </button>
               </div>
-              <div className="command-art" aria-hidden="true">
-                <div className="command-orbit">
-                  <img src={logo} alt="" />
-                  <div className="command-satellites">
-                    {[Folder, Terminal, LayoutDashboard, Settings].map((Icon, index) =>
-                      <div className={'command-track track-' + index} key={index}><span><Icon size={16} /></span></div>
-                    )}
-                  </div>
-                </div>
-                <span className="command-coordinate">LX / 01</span>
-              </div>
+              <LogoOrbit />
             </section>
             <section className="launch-panel" aria-labelledby="launch-heading">
               <h2 id="launch-heading">Quick access</h2>
@@ -116,9 +118,23 @@ function App() {
     </div></AccountGate>
   }
 
+  const cursorGrid = (cellSize: number) => reduceMotion ? null : (
+    <CursorGrid cellSize={cellSize} radius={125} gridOpacity={0.3} fillOpacity={0.15} clickPulse={false}
+      lightMode={theme === 'light'} color={theme === 'light' ? '#174c99' : '#86d8ef'} />
+  )
+
   return <div className="site">
-    <header className="top"><a href="./" aria-label="Lone X home">{brand}</a><nav aria-label="Site"><a href="#workspace">Workspace</a><a href="#capabilities">Capabilities</a><a href="#download">Download</a>{themeButton}</nav></header>
-    <main>
+    {!reduceMotion && <div className="site-cursor-grid" aria-hidden="true">{cursorGrid(36)}</div>}
+    <header className="top">
+      <a href="./" aria-label="Lone X home">{brand}</a>
+      <nav aria-label="Site">
+        <a href="#workspace">Workspace</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#download">Download</a>
+        {themeButton}
+      </nav>
+    </header>
+    <main className="site-main">
       <section className="hero">
         <motion.div initial={reduceMotion ? false : { opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .5 }}>
           <p className="eyebrow"><span className="signal" /> WINDOWS AGENT / IN DEVELOPMENT</p>
@@ -128,32 +144,21 @@ function App() {
             <TechText text="Your agent." className="hero-tech-accent" align="left" fontSize={190} fontWeight={750} letterSpacing={-0.045} sweep={false} draggable={false} clickKick={false} selection={false} accentColor={theme === 'light' ? '#174c99' : '#ffffff'} intro="none" />
           </div>}
           <p className="intro">A Windows workspace for AI-assisted development, task execution, and controlled access to your machine.</p>
-          <a className="primary" href="#workspace">Explore the workspace <ArrowDown size={17} /></a>
+          <a className="primary" href="#workspace">Explore the workspace <ArrowRight size={17} /></a>
         </motion.div>
-        <div className="mark"
-          onPointerEnter={event => { if (event.pointerType === 'mouse') setLogoFlipped(true) }}
-          onPointerLeave={event => { if (event.pointerType === 'mouse') setLogoFlipped(false) }}>
-          <FlipCard className="hero-logo-card" flipped={logoFlipped} onFlipChange={setLogoFlipped}
-            ariaLabel="Lone X application purpose" draggable={false} tilt={false} shadow={false} glare={false}
-            radius={0} background="var(--surface)" color="var(--text)"
-            front={<>
-              <GlareHover width="100%" borderRadius="0" glareColor="#8feaff" glareOpacity={0.24} rimGlint={false}>
-                <img src={logo} alt="Lone X metallic blue monogram" width={1254} height={1254} onLoad={() => setLogoStatus('done')} onError={() => setLogoStatus('error')} />
-              </GlareHover>
-              <span className="mark-label">{logoStatus === 'done' ? 'LONE X' : <LatticeLoader status={logoStatus} label="Loading logo" errorLabel="Logo unavailable" color="#8feaff" showTimer={false} />}</span>
-            </>}
-            back={<div className="logo-purpose">
-              <span className="eyebrow">WHAT LONE X IS FOR</span>
-              <strong>AI assistance for work on your PC.</strong>
-              <p>Lone X is a Windows workspace for planning development tasks and carrying them out with controlled access to your files, tools, and apps.</p>
-              <small>AI and PC execution are in development.</small>
-            </div>} />
+        <LogoOrbit background={cursorGrid(24)} />
+      </section>
+      <section id="workspace" className="section">
+        <p className="eyebrow">01 / DESKTOP WORKSPACE</p>
+        <h2>One place to direct the work.</h2>
+        <p className="intro">Chat with Raju on your PC, revisit saved conversations, and inspect local files from the same Windows app.</p>
+        <div className="preview">
+          <header><span className="signal" /> Lone X <span className="muted">Desktop preview</span></header>
+          <div><strong>Local chat with Raju</strong><p className="muted">The Windows preview includes its own Ollama runtime and default model.</p>
+            <a className="primary" href="#download">Get the Windows preview <ArrowRight size={17} /></a></div>
         </div>
       </section>
-      <section id="workspace" className="section"><p className="eyebrow">01 / DESKTOP WORKSPACE</p><h2>One place to direct the work.</h2>
-        <div className="preview"><header><span className="signal" /> Lone X <span className="muted">Desktop preview</span></header><div><strong>AI workspace</strong><p className="muted">Draft an instruction, then follow task progress and review tool activity as execution features roll out.</p><div className="preview-field">Describe what you want to do…</div></div></div>
-      </section>
-      <section id="capabilities" className="section"><p className="eyebrow">02 / PRODUCT ROADMAP</p><h2>Designed for your machine.</h2><div className="cards">
+      <section id="capabilities" className="section"><p className="eyebrow">02 / CAPABILITIES</p><h2>Designed for your machine.</h2><div className="cards">
         {capabilities.map(({ icon: Icon, title, detail }) => <FlipCard key={title} ariaLabel={title}
           height={192} radius={12} background="var(--surface)" color="var(--text)" shadow={false} tilt={false} draggable={false}
           front={<div className="card feature-face"><Icon aria-hidden="true" /><strong>{title}</strong><span>Flip for details</span></div>}

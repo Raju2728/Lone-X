@@ -27,3 +27,5 @@ Milestone 3 checks passed for approved file operations, the fixed PowerShell com
 ## Milestone 4 — In progress
 
 Settings > Task monitor drafts a local Ollama plan with up to eight ordered steps and a verification check for each step. The renderer displays validated text for review. Drafting does not grant permissions or execute tools. The Windows smoke test checks structured plan parsing and rejection of malformed replies. A live qwen2.5:0.5b planning request also passed.
+
+The fixed read-only PowerShell commands now run directly from the console. The allowlist, local audit, and emergency stop still apply.

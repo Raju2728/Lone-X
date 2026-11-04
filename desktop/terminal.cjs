@@ -32,6 +32,7 @@ function registerTerminal(app, rendererPath, requireAccount) {
   function stop() {
     if (!active) return
     active.stopped = true
+    active.approval.abort()
     active.child?.kill()
   }
 
@@ -42,12 +43,12 @@ function registerTerminal(app, rendererPath, requireAccount) {
     const command = commands.get(id)
     if (!command) throw new Error('This command is outside the approved command list.')
     if (active) throw new Error('A terminal command is already pending.')
-    const run = { sender, stopped: false, child: null }
+    const run = { sender, stopped: false, child: null, approval: new AbortController() }
     const entry = audit.run(Date.now(), command.label, 'Pending').lastInsertRowid
     active = run
     try {
       const approval = await dialog.showMessageBox(BrowserWindow.fromWebContents(sender), {
-        type: 'question', title: 'Approve local PowerShell command',
+        signal: run.approval.signal, type: 'question', title: 'Approve local PowerShell command',
         message: command.label, detail: command.script,
         buttons: ['Cancel', 'Run once'], defaultId: 0, cancelId: 0, noLink: true
       })
@@ -57,12 +58,13 @@ function registerTerminal(app, rendererPath, requireAccount) {
         return { outcome, output: '' }
       }
       requireAccount(sender)
+      finish.run('Running', entry)
       const result = await new Promise(resolve => {
         run.child = execFile(binary, ['-NoProfile', '-NonInteractive', '-Command', command.script],
           { windowsHide: true, timeout: 15000, maxBuffer: 64 * 1024 },
           (error, stdout, stderr) => resolve({
             outcome: run.stopped ? 'Stopped' : error ? 'Failed' : 'Completed',
-            output: [stdout.trim(), stderr.trim() || (error ? 'PowerShell did not complete successfully.' : '')].filter(Boolean).join('\n')
+            output: [stdout.trim(), stderr.trim() || (error && !run.stopped ? 'PowerShell did not complete successfully.' : '')].filter(Boolean).join('\n')
           }))
       })
       finish.run(result.outcome, entry)

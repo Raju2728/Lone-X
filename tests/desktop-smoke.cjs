@@ -40,7 +40,18 @@ dialog.showOpenDialog = async (_window, options) => options.properties.includes(
   : { canceled: false, filePaths: [projectPath] }
 const copyPath = require('node:path').join(projectPath, 'copy.txt')
 dialog.showSaveDialog = async () => ({ canceled: false, filePath: copyPath })
+const subprocess = require('node:child_process')
+const realExecFile = subprocess.execFile
+let stopRunningCommand
+let runningChild
+subprocess.execFile = (binary, args, options, callback) => {
+  if (!args.at(-1)?.includes('Win32_OperatingSystem')) return realExecFile(binary, args, options, callback)
+  runningChild = realExecFile(binary, [...args.slice(0, -1), 'Start-Sleep -Seconds 30'], options, callback)
+  runningChild.once('spawn', () => { void stopRunningCommand() })
+  return runningChild
+}
 require('../desktop/main.cjs')
+subprocess.execFile = realExecFile
 
 setTimeout(() => {
   console.error('Desktop smoke test timed out.')
@@ -74,6 +85,7 @@ app.whenReady().then(async () => {
       if (!document.querySelector('.shell')) throw new Error('Local account form did not unlock the workspace')
     })()
   `)
+  stopRunningCommand = () => window.webContents.executeJavaScript('window.loneXTerminal.stop()')
   let approvals = 0
   dialog.showMessageBox = async () => {
     approvals++
@@ -90,17 +102,22 @@ app.whenReady().then(async () => {
       const declined = await terminal.run('version')
       const completed = await terminal.run('version')
       const stopped = await terminal.run('version')
-      return { invalid, declined, completed, stopped, history: await terminal.history() }
+      const stoppedRunning = await terminal.run('memory')
+      return { invalid, declined, completed, stopped, stoppedRunning, history: await terminal.history() }
     })()
   `)
   assert.equal(terminal.invalid, true)
-  assert.equal(approvals, 3)
+  assert.equal(approvals, 4)
   assert.equal(terminal.declined.outcome, 'Declined')
   assert.equal(terminal.completed.outcome, 'Completed')
   assert.match(terminal.completed.output, /^\d+\./)
   assert.equal(terminal.stopped.outcome, 'Stopped')
-  assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed', 'Declined'])
-  console.log('PowerShell allowlist, approval, execution, stop before launch, and audit passed.')
+  assert.equal(terminal.stoppedRunning.outcome, 'Stopped')
+  assert.equal(terminal.stoppedRunning.output, '')
+  assert.equal(runningChild.killed, true)
+  assert.throws(() => process.kill(runningChild.pid, 0), { code: 'ESRCH' })
+  assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Stopped', 'Completed', 'Declined'])
+  console.log('PowerShell allowlist, approval, execution, stop before launch and during execution, and audit passed.')
   console.log('Local account creation and locked workspace IPC passed.')
   const result = await window.webContents.executeJavaScript(`
     (async () => {

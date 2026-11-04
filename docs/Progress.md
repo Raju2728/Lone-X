@@ -21,3 +21,5 @@ The project browser can preview an explicitly selected UTF-8 text file up to 128
 Users can save the preview bytes to a new file selected in the Windows save dialog. The desktop smoke test verifies the copy and refusal to overwrite an existing file.
 
 Settings > Terminal now runs two fixed, read-only PowerShell diagnostics after a native Run once approval. Local SQLite records the command label and outcome. Stop cancels a pending approval or terminates the current PowerShell process. Arbitrary commands and autonomous execution are outside this increment.
+
+Milestone 3 checks passed for approved file operations, the fixed PowerShell command list, native approval and denial, SQLite audit history, and stopping a real PowerShell process before launch and during execution. The running-stop test uses a harmless sleep command in an isolated profile.

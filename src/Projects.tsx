@@ -4,7 +4,10 @@ type Project = {
   name: string
   entries: { name: string; kind: 'File' | 'Folder' | 'Other' }[]
   truncated: boolean
+  starter?: boolean
 }
+
+type StarterCheck = { name: string; status: 'Passed' | 'Missing' | 'Changed' }
 
 declare global {
   interface Window {
@@ -13,6 +16,9 @@ declare global {
       preview: () => Promise<{ name: string; text: string } | null>
       saveCopy: (text?: string) => Promise<string | null>
       createStarter: () => Promise<Project | null>
+      checkStarter: () => Promise<StarterCheck[] | null>
+      repairStarter: () => Promise<StarterCheck[] | null>
+      previewStarter: () => Promise<boolean | null>
     }
   }
 }
@@ -24,13 +30,18 @@ export default function Projects() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState('')
+  const [checks, setChecks] = useState<StarterCheck[]>([])
 
   async function open() {
     setPending(true)
     setError('')
     try {
       const selected = await window.loneXProjects.open()
-      if (selected) setProject(selected)
+      if (selected) {
+        setProject(selected)
+        setChecks([])
+        setSaved('')
+      }
     } catch {
       setError('Could not open the selected folder.')
     } finally {
@@ -46,10 +57,25 @@ export default function Projects() {
       const created = await window.loneXProjects.createStarter()
       if (created) {
         setProject(created)
-        setSaved('Created ' + created.name + '. Open index.html in your browser to preview it.')
+        setChecks([])
+        setSaved('Created ' + created.name + '. Run the starter checks or open its preview.')
       }
     } catch {
       setError('Could not create the starter. Choose a writable folder.')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function runStarterAction(action: 'checkStarter' | 'repairStarter' | 'previewStarter') {
+    setPending(true)
+    setError('')
+    setSaved('')
+    try {
+      const result = await window.loneXProjects[action]()
+      if (Array.isArray(result)) setChecks(result)
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : 'Could not complete the starter action.')
     } finally {
       setPending(false)
     }
@@ -115,5 +141,17 @@ export default function Projects() {
       )}</ul> : <p className="muted">This folder is empty.</p>}
       {project.truncated && <small>Showing 500 entries.</small>}
     </div>}
+    {project?.starter && <section className="project-list" aria-label="Starter workflow">
+      <h2>Starter workflow</h2>
+      <p className="muted">This static project runs without dependencies. Checks compare its files with the generated template.</p>
+      <div className="flex flex-wrap gap-2 mt-3">
+        <button className="provider-button" disabled={pending} onClick={() => void runStarterAction('checkStarter')}>Run checks</button>
+        <button className="provider-button" disabled={pending} onClick={() => void runStarterAction('previewStarter')}>Open preview</button>
+        {checks.some(check => check.status === 'Missing') && <button className="provider-button" disabled={pending} onClick={() => void runStarterAction('repairStarter')}>Restore missing files</button>}
+      </div>
+      {checks.length > 0 && <ul aria-label="Starter check results" aria-live="polite">{checks.map(check =>
+        <li key={check.name}><span>{check.name}</span><small>{check.status}</small></li>
+      )}</ul>}
+    </section>}
   </section>
 }

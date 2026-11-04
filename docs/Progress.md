@@ -36,4 +36,6 @@ Projects can create a static HTML starter in a new subfolder after the user sele
 
 Projects can edit a previewed UTF-8 source file and save the result to a new path selected through the Windows save dialog. The original stays available for comparison. The smoke test checks the edited bytes, original file, and overwrite protection.
 
-Dependency installation, project execution, and the test failure and repair workflow are still open for this milestone.
+The generated HTML starter can run in a sandboxed desktop preview without dependencies. The starter workflow reports passed, missing, and changed files. Users can restore missing template files through an explicit action. Changed files require review and are preserved. The smoke test removes a stylesheet, observes the failed check, restores the file, and opens the preview.
+
+Dependency installation, running projects with scripts, and repairing changed source files remain open for this milestone.

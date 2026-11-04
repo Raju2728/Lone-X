@@ -24,7 +24,10 @@ contextBridge.exposeInMainWorld('loneXProjects', {
   open: () => ipcRenderer.invoke('projects:open'),
   preview: () => ipcRenderer.invoke('projects:preview'),
   saveCopy: text => ipcRenderer.invoke('projects:save-copy', text),
-  createStarter: () => ipcRenderer.invoke('projects:create-starter')
+  createStarter: () => ipcRenderer.invoke('projects:create-starter'),
+  checkStarter: () => ipcRenderer.invoke('projects:check-starter'),
+  repairStarter: () => ipcRenderer.invoke('projects:repair-starter'),
+  previewStarter: () => ipcRenderer.invoke('projects:preview-starter')
 })
 
 contextBridge.exposeInMainWorld('loneXAccount', {

@@ -3,6 +3,7 @@ const { execFile } = require('node:child_process')
 const { DatabaseSync } = require('node:sqlite')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
+const { checkUpdate, downloadUpdate, upToDate } = require('./update.cjs')
 
 const version = { label: 'PowerShell version', script: '$PSVersionTable.PSVersion.ToString()' }
 const memory = { label: 'Available memory', script: 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List' }
@@ -14,7 +15,10 @@ const commands = new Map([
   [memory.script.toLowerCase(), memory],
   ['get-date', { label: 'Current date and time', script: 'Get-Date' }],
   ['get-location', location],
-  ['pwd', location]
+  ['pwd', location],
+  ['lonex -v', { label: 'Lone X version', action: 'version' }],
+  ['lonex -avail', { label: 'Lone X update availability', action: 'avail' }],
+  ['lonex -update', { label: 'Lone X update', action: 'update' }]
 ])
 
 function registerTerminal(app, rendererPath, requireAccount) {
@@ -41,19 +45,40 @@ function registerTerminal(app, rendererPath, requireAccount) {
     if (!active) return
     active.stopped = true
     active.child?.kill()
+    active.controller?.abort()
   }
 
   app.once('before-quit', stop)
   handle('stop', sender => { if (active?.sender === sender) stop() })
   handle('history', () => history.all())
   handle('run', async (sender, id) => {
-    const command = typeof id === 'string' && id.length <= 300 ? commands.get(id.trim().toLowerCase()) : undefined
+    const key = typeof id === 'string' && id.length <= 300
+      ? id.trim().toLowerCase().replace(/^lonex\s+-\s*/, 'lonex -')
+      : ''
+    const command = commands.get(key)
     if (!command) throw new Error('This command is outside the approved command list.')
     if (active) throw new Error('A terminal command is already running.')
-    const run = { sender, stopped: false, child: null }
+    const run = { sender, stopped: false, child: null, controller: null }
     const entry = audit.run(Date.now(), command.label, 'Running').lastInsertRowid
     active = run
     try {
+      if (command.action === 'version') {
+        finish.run('Completed', entry)
+        return { outcome: 'Completed', output: 'Lone X (Beta)' }
+      }
+      if (command.action === 'avail' || command.action === 'update') {
+        run.controller = new AbortController()
+        const signal = AbortSignal.any([run.controller.signal, AbortSignal.timeout(15 * 60 * 1000)])
+        let output
+        if (command.action === 'avail') {
+          const update = await checkUpdate(signal)
+          output = update ? 'Update available: Lone X (Beta), build ' + update.revision.slice(0, 8) : upToDate
+        } else {
+          output = await downloadUpdate(app.getPath('downloads'), signal)
+        }
+        finish.run('Completed', entry)
+        return { outcome: 'Completed', output }
+      }
       const result = await new Promise(resolve => {
         run.child = execFile(binary, ['-NoProfile', '-NonInteractive', '-Command', command.script],
           { windowsHide: true, timeout: 15000, maxBuffer: 64 * 1024 },
@@ -65,6 +90,10 @@ function registerTerminal(app, rendererPath, requireAccount) {
       finish.run(result.outcome, entry)
       return result
     } catch (error) {
+      if (run.stopped) {
+        finish.run('Stopped', entry)
+        return { outcome: 'Stopped', output: '' }
+      }
       finish.run('Failed', entry)
       throw error
     } finally {

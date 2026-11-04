@@ -21,6 +21,11 @@ const help = [
   '  Get-Location (pwd)                    Current working directory',
   '  memory                                Available memory diagnostic',
   '',
+  'Lone X commands:',
+  '  LoneX -v                              Show the version of LoneX',
+  '  LoneX -Avail                          Check whether a newer build is available',
+  '  LoneX -update                         Check for Updates',
+  '',
   'Console commands: help, clear (cls)',
   'Enter runs a command. Up/Down recalls commands. Ctrl+C stops a running command.'
 ].join('\n')

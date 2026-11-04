@@ -23,3 +23,10 @@ folder is present, then close and reopen Lone X.
 
 Email confirmation and password reset by email require SMTP setup.
 Project help: https://github.com/Raju2728/Lone-X
+
+CHECK FOR UPDATES
+
+In Settings > Terminal, type LoneX -v to see the build label. Type
+LoneX -Avail to check GitHub without downloading, or LoneX -update to
+download a newer verified ZIP if one is available. Extract
+an update to a new folder and open its Lone X.exe after closing the old app.

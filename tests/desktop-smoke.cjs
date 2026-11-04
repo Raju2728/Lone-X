@@ -118,6 +118,7 @@ app.whenReady().then(async () => {
   assert.equal(runningChild.killed, true)
   assert.throws(() => process.kill(runningChild.pid, 0), { code: 'ESRCH' })
   assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed'])
+  assert.equal((await window.webContents.executeJavaScript("window.loneXTerminal.run('LoneX -v')")).output, 'Lone X (Beta)')
   console.log('PowerShell allowlist, prompt-free execution, emergency stop, and audit passed.')
   await window.webContents.executeJavaScript(`
     (async () => {

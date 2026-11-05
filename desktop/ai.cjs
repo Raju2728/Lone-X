@@ -225,6 +225,7 @@ function registerAI(app, rendererPath, requireAccount) {
   }))
   let active
   const agentFolders = new WeakMap()
+  const desktopAgents = new WeakSet()
   let agentReview
   let dictation
   app.once('before-quit', () => dictation?.abort())
@@ -297,19 +298,35 @@ function registerAI(app, rendererPath, requireAccount) {
   const installedModels = async () => (await modelInventory()).map(model => model.name)
   handle('models', installedModels)
   handle('model-inventory', () => modelInventory())
-  handle('agent-folder', async event => {
+  handle('agent-folder', async (event, target) => {
     if (active) throw new Error('Finish the current response before changing the agent folder.')
-    const selected = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Allow Chat agent to inspect this project folder', properties: ['openDirectory'] })
-    if (selected.canceled || !selected.filePaths[0]) return null
+    let selectedPath
+    if (target === 'desktop') {
+      selectedPath = app.getPath('desktop')
+      const existing = await realpath(selectedPath)
+      if (agentFolders.get(event.sender) === existing) { desktopAgents.add(event.sender); return existing }
+      const choice = await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender), {
+        type: 'question', buttons: ['Cancel', 'Allow Desktop workspace'], defaultId: 0, cancelId: 0,
+        message: 'Allow the Chat agent to work in your Windows Desktop folder?',
+        detail: existing + '\n\nThe agent can list and read supported files in this folder for this app session. Creating, editing or recycling files still requires your review. Disconnect in Chat to revoke access.'
+      })
+      if (choice.response !== 1 || event.sender.isDestroyed()) return null
+    } else {
+      const selected = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Allow Chat agent to inspect this project folder', properties: ['openDirectory'] })
+      if (selected.canceled || !selected.filePaths[0]) return null
+      selectedPath = selected.filePaths[0]
+    }
     requireAccount(event.sender)
     if (active) throw new Error('Finish the current response before changing the agent folder.')
-    const root = await realpath(selected.filePaths[0])
+    const root = await realpath(selectedPath)
     const protectedRoots = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, app.getPath('appData'), app.getPath('userData'), path.dirname(process.execPath)].filter(Boolean)
     if (root === path.parse(root).root || root.toLowerCase() === app.getPath('home').toLowerCase() || protectedRoots.some(base => {
       const relative = path.relative(base, root)
       return !relative || (!relative.startsWith('..') && !path.isAbsolute(relative))
     }) || root.split(/[\\/]/).some(part => ['.ssh', '.aws', '.codex', '.gnupg', '.azure', '.kube', '.git', 'node_modules'].includes(part.toLowerCase()))) throw new Error('Choose a project folder outside system, application and credential directories.')
     agentFolders.set(event.sender, root)
+    if (target === 'desktop') desktopAgents.add(event.sender)
+    else desktopAgents.delete(event.sender)
     return root
   })
   handle('agent-review', (event, input) => {
@@ -319,6 +336,7 @@ function registerAI(app, rendererPath, requireAccount) {
   handle('agent-disconnect', event => {
     if (active) throw new Error('Stop the current response before disconnecting the folder.')
     agentFolders.delete(event.sender)
+    desktopAgents.delete(event.sender)
   })
   async function approveAgent(sender, details, signal) {
     signal.throwIfAborted()
@@ -438,8 +456,9 @@ function registerAI(app, rendererPath, requireAccount) {
       }
       const endpoint = await runtime()
       signal.throwIfAborted()
-      const execute = agent ? createWorkspace(agentRoot, { signal, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
-      let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta })
+      const desktop = desktopAgents.has(event.sender)
+      const execute = agent ? createWorkspace(agentRoot, { signal, desktop, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
+      let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta, workspace: agentRoot, desktop })
         : await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
       controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')

@@ -18,7 +18,7 @@ type AgentReview = { id: string; kind: string; path: string; before: string; aft
 declare global {
   interface Window {
     loneXAI: {
-      chooseAgentFolder: () => Promise<string | null>
+      chooseAgentFolder: (target?: 'desktop') => Promise<string | null>
       disconnectAgent: () => Promise<void>
       reviewAgent: (input: { id: string; accept: boolean }) => Promise<void>
       onAgentReview: (callback: (review: AgentReview | null) => void) => () => void
@@ -70,10 +70,10 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
 
   useEffect(() => api.onAgentReview(setReview), [api])
 
-  async function chooseAgentFolder() {
+  async function chooseAgentFolder(target?: 'desktop') {
     setChoosingFolder(true); setError('')
     try {
-      const folder = await api.chooseAgentFolder()
+      const folder = await api.chooseAgentFolder(target)
       if (folder) { setAgentFolder(folder); setAgent(true); setModel('qwen3:4b-instruct') }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not choose agent folder.') }
     finally { setChoosingFolder(false) }
@@ -201,6 +201,21 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   async function send(prompt: string, detail: PromptBarSendDetail) {
     const text = prompt.trim()
     if (deleting || installing || !ready || (!text && !detail.attachments.length) || needsModel || pending) return false
+    let sendAgent = agent
+    let sendModel = model
+    if (/^(?:please\s+)?(?:create|make|write|edit|read|delete|remove)\b/i.test(text) && /\bdesktop\b/i.test(text) && /\b(?:file|folder|directory|document)\b/i.test(text)) {
+      setChoosingFolder(true)
+      try {
+        const folder = await api.chooseAgentFolder('desktop')
+        if (!folder) return false
+        setAgentFolder(folder); setAgent(true); setModel('qwen3:4b-instruct')
+        sendAgent = true; sendModel = 'qwen3:4b-instruct'
+        const available = await api.models()
+        setInstalledModels(available)
+        if (!available.includes(sendModel)) { setError('Desktop access is ready. Download Qwen3 4B Instruct below, then send this prompt again.'); return false }
+      } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not request Desktop access.'); return false }
+      finally { setChoosingFolder(false) }
+    }
     followLatest.current = true
     stopDictation()
     setPending([text, ...detail.attachments].filter(Boolean).join('\n'))
@@ -217,7 +232,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
       }))
       const message = [text, ...excerpts].filter(Boolean).join('\n\n')
       if (message.length > 16000) throw new Error('Keep the prompt and attached text within 16,000 characters.')
-      const history = await api.send({ model, text: message, chatId, effort: detail.effort, agent })
+      const history = await api.send({ model: sendModel, text: message, chatId, effort: detail.effort, agent: sendAgent })
       if (!history) return false
       setMessages(history)
       setDraft('')
@@ -242,6 +257,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
       <div className="agent-controls">
         <button className="provider-button" aria-pressed={agent} disabled={!!pending || installing || choosingFolder} onClick={() => { setAgent(value => !value); if (!agent) setModel('qwen3:4b-instruct') }}>Agent {agent ? 'on' : 'off'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder()}>{choosingFolder ? 'Choosing…' : agentFolder ? 'Change folder' : 'Choose agent folder'}</button>
+        <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder('desktop')}>Use Desktop</button>
         {agentFolder && <span className="agent-folder" title={agentFolder}>{agentFolder}</span>}
         {agentFolder && <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void api.disconnectAgent().then(() => { setAgentFolder(''); setAgent(false) }).catch(() => setError('Could not disconnect the folder.'))}>Disconnect</button>}
       </div>

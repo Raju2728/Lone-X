@@ -24,6 +24,14 @@ test('workspace actions require review, reject escape paths, detect stale files 
     await assert.rejects(execute('write_file', { path: 'src/main.js', content: 'not approved' }), /declined/)
     assert.equal(await fs.readFile(path.join(root, 'src/main.js'), 'utf8'), 'const answer = 1\n')
     allow = true
+    const directory = await execute('create_directory', { path: 'empty-folder' })
+    assert.equal(directory.outcome, 'Directory created')
+    assert.equal((await fs.stat(path.join(root, 'empty-folder'))).isDirectory(), true)
+    const desktopScope = createWorkspace(root, { desktop: true, signal: controller.signal, approve: async () => true })
+    assert.equal((await desktopScope('create_directory', { path: 'Desktop' })).outcome, 'Directory already exists')
+    await desktopScope('write_file', { path: 'Desktop/Welcome.txt', content: 'Welcome to LoneX' })
+    await assert.rejects(desktopScope('write_file', { path: 'Desktop/../escape.txt', content: 'bad' }), /restricted/)
+    assert.equal(await fs.readFile(path.join(root, 'Welcome.txt'), 'utf8'), 'Welcome to LoneX')
     const edit = await execute('write_file', { path: 'src/main.js', content: 'const answer = 2\n' })
     assert.equal(await fs.readFile(path.join(root, edit.backup), 'utf8'), 'const answer = 1\n')
     await fs.writeFile(path.join(root, 'src/main.js'), 'external change')
@@ -75,7 +83,7 @@ test('agent loop dispatches only tools and shares token windows across requests'
         const body = JSON.parse(options.body)
         assert.equal(body.model, agentModel)
         assert.equal(body.think, false)
-        assert.equal(body.tools.length, 5)
+        assert.equal(body.tools.length, 6)
         requests++
         if (requests === 2) assert.equal(body.messages.at(-1).role, 'tool')
         return Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: requests === 1

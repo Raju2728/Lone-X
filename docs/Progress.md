@@ -102,6 +102,10 @@ Agent unit checks verify path restrictions, review denial, backups, stale-conten
 
 Assistant responses now reveal incoming words in short batches with a soft opacity fade. Completed text is flushed without replaying earlier chunks; saved history stays static. Reduced-motion preferences disable the animation, and follow-latest scrolling also updates when a batch is revealed.
 
+Desktop-targeted file prompts now request access to the actual Windows Desktop, select Qwen3 Instruct and enable Agent mode. If the model is missing, the prompt stays available while the user downloads it. A Use Desktop shortcut provides the same access flow. File changes still require separate before/after approval. The agent also has an explicit create-directory tool for empty folders.
+
+The exact prompt "Create A New text file in Desktop and write Welcome to LoneX in it" passed the rendered Chat test with a temporary Desktop, native access approval and file-change review. A live Qwen3 Instruct run created Welcome.txt containing Welcome to LoneX in an isolated Desktop fixture (1,750 reported tokens). Desktop-prefixed tool paths resolve to the approved Desktop root; traversal paths remain rejected. The tests do not create files on the founder's real Desktop.
+
 Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The founder subsequently authorized publishing this Beta while a real clean-Windows software installation test remains outstanding.
 
 ## Local AI usage windows

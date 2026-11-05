@@ -91,6 +91,10 @@ unless Windows permissions on the chosen extraction folder require it.
 CHAT AGENT
 
 In Chat, click Choose agent folder and select a separate project folder.
+Use Desktop selects your actual Windows Desktop after an access confirmation.
+Direct prompts such as Create a new text file in Desktop and write
+"Welcome to LoneX" in it also request Desktop access and enable Agent mode.
+If the model is missing, download it when prompted, then send the prompt again.
 This selects Qwen3 4B Instruct and enables Agent mode. Download the model
 when prompted (about 2.5 GB); afterward it runs locally without an API key.
 This model uses Apache 2.0: https://ollama.com/library/qwen3:4b-instruct
@@ -101,7 +105,7 @@ proposed content, then approve or reject each change. Existing files must
 be read before edits. Backups are kept in .lone-x-backups. Recycling also
 requires approval. Disconnect revokes this session's selected folder.
 
-Agent scope: UTF-8 text files up to 16 KB, bounded directory listings, up
+Agent scope: approved folder creation, UTF-8 text files up to 16 KB, bounded directory listings, up
 to 16 tool actions per turn, and approved npm tests or lockfile-based npm
 dependency installs. Scripts run with your Windows permissions and can
 access files/network beyond the folder, so inspect the command review.

@@ -86,9 +86,10 @@ global.fetch = (url, options) => {
     const payload = JSON.parse(options.body)
     if (payload.tools) {
       assert.equal(payload.model, 'qwen3:4b-instruct')
+      const desktopTask = payload.messages.some(message => message.role === 'user' && message.content.includes('Welcome to LoneX'))
       return Promise.resolve(Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: payload.messages.at(-1).role === 'tool'
-        ? { role: 'assistant', content: 'Created hello.txt after approval.' }
-        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: 'hello.txt', content: 'Hello from the agent' } } }] } }))
+        ? { role: 'assistant', content: desktopTask ? 'Created Welcome.txt after approval.' : 'Created hello.txt after approval.' }
+        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: desktopTask ? 'Welcome.txt' : 'hello.txt', content: desktopTask ? 'Welcome to LoneX' : 'Hello from the agent' } } }] } }))
     }
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
@@ -944,6 +945,8 @@ async function runSmoke() {
   console.log('Selected-folder storage scan, linked-path protection, cancellation, stale review and approved recycling passed.')
   const agentFolder = storageFs.mkdtempSync(storagePath.join(__dirname, '../.agent-ipc-'))
   const agentPicker = dialog.showOpenDialog
+  const agentConfirm = dialog.showMessageBox
+  const originalDesktop = app.getPath('desktop')
   try {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [agentFolder] })
     const selectedAgentFolder = await window.webContents.executeJavaScript('Promise.resolve().then(() => window.loneXAI.chooseAgentFolder()).catch(error => ({ failure: error.message }))')
@@ -973,8 +976,37 @@ async function runSmoke() {
     assert.match(agentHistory.at(-1).content, /File created/)
     await window.webContents.executeJavaScript('window.loneXAI.disconnectAgent()')
     await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({ model: 'qwen3:4b-instruct', text: 'Blocked', chatId: 'agent-fixture', agent: true })"), /choose an agent folder/)
+    const desktopFolder = storagePath.join(agentFolder, 'Desktop')
+    storageFs.mkdirSync(desktopFolder)
+    app.setPath('desktop', desktopFolder)
+    dialog.showMessageBox = async () => ({ response: 0 })
+    assert.equal(await window.webContents.executeJavaScript("window.loneXAI.chooseAgentFolder('desktop')"), null)
+    let desktopApprovals = 0
+    dialog.showMessageBox = async (_parent, options) => { assert.match(options.detail, /Desktop/); desktopApprovals++; return { response: 1 } }
+    const desktopResult = await window.webContents.executeJavaScript(`(async () => {
+      const waitFor = async test => { for (let i=0;i<100;i++) { if(test()) return; await new Promise(resolve=>setTimeout(resolve,20)) } throw new Error('Desktop prompt did not complete') }
+      const workspace = document.querySelector('.ai-console')
+      const draft = workspace.querySelector('textarea')
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(draft), 'value').set.call(draft, 'Create A New text file in Desktop and write "Welcome to LoneX" in it.')
+      draft.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitFor(()=>!workspace.querySelector('button[aria-label="Send"]').disabled)
+      workspace.querySelector('button[aria-label="Send"]').click()
+      await waitFor(()=>!!workspace.querySelector('[aria-label="Review agent action"]'))
+      const review = workspace.querySelector('[aria-label="Review agent action"]')
+      if (!review.textContent.includes('Welcome to LoneX')) throw new Error('Desktop content was not previewed')
+      const approve = [...review.querySelectorAll('button')].find(button=>button.textContent==='Approve create')
+      approve.click()
+      await waitFor(()=>draft.value === '' && workspace.textContent.includes('Created Welcome.txt'))
+      return { agentOn: workspace.querySelector('button[aria-pressed]')?.getAttribute('aria-pressed') }
+    })().catch(error=>({failure:error.message}))`)
+    assert.equal(desktopResult.failure, undefined, desktopResult.failure)
+    assert.equal(desktopResult.agentOn, 'true')
+    assert.equal(desktopApprovals, 1)
+    assert.equal(storageFs.readFileSync(storagePath.join(desktopFolder, 'Welcome.txt'), 'utf8'), 'Welcome to LoneX')
   } finally {
     dialog.showOpenDialog = agentPicker
+    dialog.showMessageBox = agentConfirm
+    app.setPath('desktop', originalDesktop)
     assert.equal(storagePath.dirname(storagePath.resolve(agentFolder)), storagePath.resolve(__dirname, '..'))
     storageFs.rmSync(agentFolder, { recursive: true, force: true })
   }

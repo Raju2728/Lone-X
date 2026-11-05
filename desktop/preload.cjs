@@ -38,7 +38,7 @@ contextBridge.exposeInMainWorld('loneXResources', {
 })
 
 contextBridge.exposeInMainWorld('loneXAI', {
-  chooseAgentFolder: () => ipcRenderer.invoke('ai:agent-folder'),
+  chooseAgentFolder: target => ipcRenderer.invoke('ai:agent-folder', target),
   disconnectAgent: () => ipcRenderer.invoke('ai:agent-disconnect'),
   reviewAgent: input => ipcRenderer.invoke('ai:agent-review', input),
   onAgentReview: callback => {

@@ -1,0 +1,15 @@
+{
+  "name": "lone-x-resource-api",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node main.cjs",
+    "test": "node --test resource-api.test.cjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "mongodb": "^6.0.0"
+  }
+}

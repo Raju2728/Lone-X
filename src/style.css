@@ -375,3 +375,29 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .legal-consent legend { margin-bottom: 8px; font-weight: 650; }
 .legal-consent label { display: flex; align-items: flex-start; gap: 9px; }
 .legal-consent input { margin-top: 4px; accent-color: var(--accent); }
+.rail-limits { position: relative; margin-top: auto; }
+.rail-limits + .rail-settings { margin-top: 2px; }
+.rail-limits__trigger { display: flex; align-items: center; gap: 9px; width: 100%; padding: 8px 5px; color: var(--muted); border-radius: 9px; text-align: left; font-size: 14px; }
+.rail-limits__trigger:hover, .rail-limits__trigger[aria-expanded="true"] { background: var(--bg); color: var(--text); }
+.shell-chat .rail-limits__trigger { justify-content: center; }
+.shell-chat .rail-limits__trigger > span { display: none; }
+.limit-icon { flex: none; }
+.limit-tone-green { --limit-color: #22c55e; }
+.limit-tone-orange { --limit-color: #f97316; }
+.limit-tone-yellow { --limit-color: #eab308; }
+.limit-tone-red { --limit-color: #ef4444; }
+.limit-icon [class^="limit-tone-"] { color: var(--limit-color, var(--muted)); }
+.limit-tone-unknown { opacity: 0; }
+.usage-limits { position: absolute; left: calc(100% + 22px); bottom: 0; z-index: 60; width: min(330px, calc(100vw - 100px)); padding: 20px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); color: var(--text); box-shadow: 0 16px 55px #0004; font-size: 12px; }
+.usage-limits__heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.usage-limits__heading strong { font-size: 15px; }
+.usage-limits__heading > span { color: var(--muted); font-size: 11px; }
+.usage-limits__windows { display: grid; gap: 22px; margin: 22px 0 16px; }
+.usage-limit { display: grid; gap: 7px; }
+.usage-limit__label { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; }
+.usage-limit__label > span { font-weight: 650; }
+.usage-limit__track { width: 100%; height: 6px; border-radius: 10px; background: var(--line); overflow: hidden; }
+.usage-limit__track > div { width: var(--remaining); height: 100%; border-radius: inherit; background: var(--limit-color); transition: width 300ms ease, background-color 200ms ease; }
+.usage-limits small, .usage-limits p { color: var(--muted); }
+.usage-limits p { margin: 10px 0 0; line-height: 1.5; font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { .usage-limit__track > div { transition: none; } }

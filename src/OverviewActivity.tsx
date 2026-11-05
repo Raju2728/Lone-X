@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Bell } from 'lucide-react'
 
-export type Usage = { elapsedMs: number; tokens: number; completed: number; version: string }
+export type TokenWindow = { id: string; label: string; limit: number; used: number; remaining: number; estimated: boolean; resetsAt: number | null }
+export type Usage = { elapsedMs: number; tokens: number; completed: number; version: string; limits: TokenWindow[] }
 const tokenFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 })
 
 function formatElapsed(elapsedMs: number) {

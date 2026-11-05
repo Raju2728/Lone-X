@@ -1,12 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
+import { Cpu, Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import FlipCard from './react-bits/FlipCard'
 import SquishSwitch from './react-bits/SquishSwitch'
+import UsageLimits from './UsageLimits'
 import AIWorkspace from './AIWorkspace'
 import OverviewActivity from './OverviewActivity'
 import Activity from './Activity'
+import Resources from './Resources'
+import LocalModels from './LocalModels'
+import Software from './Software'
+import Automation from './Automation'
 import { LegalSettings, WebsiteLegalFooter, WebsiteLegalPage } from './LegalPolicies'
 import Projects from './Projects'
 import LocalTerminal from './LocalTerminal'
@@ -29,7 +34,11 @@ const pages = [
   { name: 'Terminal', icon: Terminal, detail: 'Run approved Windows PowerShell commands.' },
   { name: 'Activity', icon: History, detail: 'Review local chat usage and recent command results.' },
   { name: 'Settings', icon: Settings, detail: 'Manage your workspace appearance.' },
+  { name: 'Resources', icon: Download, detail: 'Browse and verify versioned resource downloads.' },
+  { name: 'Local models', icon: Cpu, detail: 'Check Ollama and download supported models.' },
   { name: 'Legal & Policies', icon: ShieldCheck, detail: 'Review the terms, privacy policy, and software license.' },
+  { name: 'Software', icon: Boxes, detail: 'Find and install development tools through Windows.' },
+  { name: 'Automation', icon: LayoutDashboard, detail: 'Review Windows app launches and local system status.' },
 ] as const
 
 function usePreference(key: string, initial: string) {
@@ -119,6 +128,7 @@ function App() {
           const label = item.name
           return <button key={item.name} aria-label={label} title={inChat ? label : undefined} aria-current={page === item ? 'page' : undefined} onClick={() => setPage(item)}><item.icon size={17} aria-hidden="true" /><span>{label}</span></button>
         })}</nav>
+        <UsageLimits />
         <button className="rail-settings" aria-label="Settings" title={inChat ? 'Settings' : undefined} aria-current={page === pages[6] ? 'page' : undefined} onClick={() => setPage(pages[6])}><Settings size={17} aria-hidden="true" /><span>Settings</span></button>
         <div className="rail-status"><ShieldCheck size={16} aria-hidden="true" /><div><strong>Local workspace</strong><small>Windows desktop</small></div>{themeButton}</div>
       </aside>
@@ -153,7 +163,7 @@ function App() {
             {page.name === 'Settings' && <>
               <section className="launch-panel" aria-label="Workspace tools">
                 <h2>Workspace tools</h2>
-                {[...pages.slice(2, 6), pages[7]].map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
+                {pages.filter(item => item !== pages[6]).slice(2).map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
                   <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
                   <span><strong>{item.name}</strong><small>{item.detail}</small></span>
                   <ArrowRight size={16} aria-hidden="true" />
@@ -165,7 +175,11 @@ function App() {
           <div hidden={page.name !== 'Terminal'}><LocalTerminal /></div>
           <div hidden={page.name !== 'Projects'}><Projects /></div>
           {page.name === 'Activity' && <Activity />}
+          {page.name === 'Resources' && <Resources />}
+          {page.name === 'Local models' && <LocalModels />}
           {page.name === 'Legal & Policies' && <LegalSettings />}
+          {page.name === 'Software' && <Software />}
+          {page.name === 'Automation' && <Automation />}
           <div hidden={!inChat}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>

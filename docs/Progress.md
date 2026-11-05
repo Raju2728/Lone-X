@@ -42,4 +42,54 @@ Changed starter files can be compared with the original template and saved as re
 
 After reviewing a changed starter file, users can confirm an in-place template restoration. Lone X checks that the file still matches the reviewed bytes and saves the original in a backup folder before replacing it. The desktop smoke test verifies cancellation, rejection of stale reviews, and backup contents.
 
-Dependency installation and running projects with scripts remain open for this milestone.
+Projects can inspect a selected npm project, review its exact start or test command, and approve execution. Lockfile-based dependency installation uses npm ci with lifecycle scripts disabled. Commands show live output and exit status, and can be stopped. The workflow uses a standard Windows Node.js installation.
+
+Projects can send the latest failed npm test output and one explicitly previewed source file to local Ollama. A proposed edit must match one exact location in that file. Users review the diagnosis and the proposed text before approving an edit with a backup. Tests are rerun through the existing approval flow.
+
+The desktop smoke test installs a local dependency, runs the fixture, detects a failing test, applies a simulated Ollama proposal with a backup, and reruns the test successfully. Live checks with the installed small models diagnosed the fixture failure but did not produce an acceptable edit. Live fix generation remains open. The workflow is scoped to npm projects and one source file per proposal.
+
+## Milestone 5 — Deferred
+
+Live cloud setup and deployment are paused at R2 activation. Cloudflare requires a billing-enabled subscription. The locally verified implementation is available if cloud work resumes.
+
+The resource API uses MongoDB Atlas for version metadata and a private Cloudflare R2 bucket for binaries. Administrators register an uploaded object after the API checks its size and SHA-256. Readers can list metadata and download a specific version. Downloads are pinned to the object's registered ETag. Local tests use simulated Atlas and R2 adapters.
+
+Settings → Resources lists registered versions. The desktop process keeps the reader token out of the renderer, rejects redirects, and checks each download's size and SHA-256 before saving it. The desktop smoke test covers authenticated catalog access and rejects corrupt bytes without leaving a partial download. Live Atlas and R2 verification and deployment remain open.
+
+The desktop smoke test now registers and downloads a resource over real loopback HTTP using the backend routes with simulated storage. A read-only live smoke check can verify a registered Atlas and R2 resource once the service and reader credentials are configured.
+
+Administrators can withdraw a version from the catalog and block new downloads while retaining its metadata and R2 object. Local tests verify reader denial, repeat requests, and continued access to other versions.
+
+## Milestone 6 — In progress
+
+Settings → Local models lists supported Ollama models, their installation status, and their reported size. Users can download a missing model, follow per-file progress, and cancel the transfer. A download completes only after Ollama reports success and the model appears in its inventory. The desktop smoke test covers the download and installed state with simulated Ollama responses.
+
+Settings → Software checks the standard Windows locations for Node.js and Git, shows a WinGet installation plan for missing tools, and asks for confirmation before launching the publisher installer. Afterward it checks the installed tool's version. WinGet retains its installer hash check and package/source agreement handling. The desktop smoke test simulates WinGet and verifies package selection, cancellation, approval, and post-installation detection.
+
+Installation attempts are recorded locally in SQLite. An unfinished attempt from an exited process is marked for verification on the next launch. Installers are checked again before a retry. The tests simulate interruption and retry, confirm approval cancellation, and verify the recorded outcome.
+
+The model manager reuses installed models without pulling them again. Tests cover cancellation, interrupted transfers, and a success response whose model is missing from the local inventory.
+
+Live installation on a clean Windows profile remains unverified. The founder has no VM or spare Windows PC available, and Windows Sandbox is absent on the current PC. The build and simulated desktop checks passed. Application publication remains on hold.
+
+## Milestone 7 — In progress
+
+Settings → Automation shows local memory and processor counts and offers approved launch requests for Notepad, Calculator, and Paint when their standard Windows executables are available. The main process restricts the app IDs and asks for confirmation. Pending approval can be cancelled, and local SQLite records the outcome. Windows handles the application after the launch request.
+
+The desktop smoke test verifies approval, cancellation before launch, error reporting, and audit history with a simulated Windows launch.
+
+The browser workspace opens an approved HTTPS origin in a sandboxed window and a separate temporary session. It blocks cross-origin navigation, popups, downloads, and permission requests. Users can stop loading or close the workspace. Further browser workflows and application interactions remain open.
+
+Desktop checks use local page fixtures to verify same-origin navigation, blocked external links and popups, cancellation, HTTP errors, and lack of access to Lone X's preload APIs. The local Privacy Policy draft is version 1.1, with consent revision 2 for the additional optional browser and audit disclosures.
+
+The browser workspace now provides Back, Forward and Reload. The main process accepts only these fixed actions and checks each destination against the approved HTTPS origin, including history entries. Controls reflect available history, and Stop remains available while loading. Same-page navigation updates the displayed URL; browser process failure is reported. Desktop checks cover back/forward navigation, reload, unavailable history and invalid actions. Broader application interactions and final release quality assurance remain outstanding.
+
+Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The downloadable Windows release remains held until the outstanding milestone checks are complete, including a real clean-Windows software installation test.
+
+## Local AI usage windows
+
+Lone X defaults to 100,000 input/output tokens per five hours and 1,000,000 per seven days, shared across models and local accounts on the same installation. These product defaults are not OpenAI subscription limits. Each independent window starts with its first admitted request; expired windows clear on the next status check or request, including after app restart. SQLite stores the counters and reset timestamps separately from lifetime chat metrics and chat retention. Deleting a chat does not clear the counters.
+
+Chat, automatic titles, plans and repair suggestions all pass through the main-process limiter. A request already admitted can finish over a limit; the next request is blocked until both windows have remaining capacity. Ollama completion counters supply input/output usage, including history and attachments. Interrupted streams and missing counters use a conservative UTF-8 byte estimate. Network and HTTP failures before streaming do not consume tokens. The sidebar Limits option opens remaining allowance bars and reset timestamps: five-hour above weekly, green at 70–100%, orange at 40–below 70%, yellow at 10–below 40%, and red below 10%. Its circular icon uses the upper arc for five-hour and lower arc for weekly. The scope is local usage management, not tamper-resistant cloud billing.
+
+`node --test tests/token-limits.cjs` verifies persistence, independent resets at exact boundaries, exhausted-window enforcement, late completions, interrupted responses and missing counters. Application publication remains on hold with the unfinished milestones.

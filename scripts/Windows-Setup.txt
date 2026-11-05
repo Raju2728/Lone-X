@@ -31,6 +31,16 @@ in PowerShell for the models you want:
 Use the in-app download button with the ZIP. The bundled runtime stores
 its models separately from a standalone Ollama installation.
 
+LOCAL AI USAGE LIMITS
+Lone X allows 100,000 input and output tokens per five-hour window and
+1,000,000 per seven-day window, shared across supported models on this
+installation. Each timer starts with its first request and resets independently.
+Usage survives app restarts. Open Limits in the side navigation to view
+remaining usage and reset times. A running response may finish over the allowance;
+new requests pause until both windows have capacity. Interrupted responses
+use conservative estimates if Ollama does not return token counts.
+These are Lone X limits; no OpenAI account or subscription is involved.
+
 TROUBLESHOOTING
 
 If Lone X does not start, extract the entire ZIP before opening the executable.

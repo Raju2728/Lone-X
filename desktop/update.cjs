@@ -1,9 +1,6 @@
-const { createHash } = require('node:crypto')
-const { createWriteStream } = require('node:fs')
-const { mkdir, mkdtemp, readFile, rename, rm, rmdir } = require('node:fs/promises')
+const { readFile } = require('node:fs/promises')
 const path = require('node:path')
-const { Readable, Transform } = require('node:stream')
-const { pipeline } = require('node:stream/promises')
+const { saveVerifiedDownload } = require('./verified-download.cjs')
 
 const releaseUrl = 'https://api.github.com/repos/Raju2728/Lone-X/releases/tags/desktop-preview'
 const name = 'Lone-X-Windows.zip'
@@ -30,37 +27,17 @@ async function checkUpdate(signal, request = fetch, buildInfo = path.join(__dirn
 async function downloadUpdate(downloads, signal, request = fetch, buildInfo) {
   const update = await checkUpdate(signal, request, buildInfo)
   if (!update) return upToDate
-  const { digest, size: expectedSize } = update
 
   const response = await request(downloadUrl, { signal })
   if (!response.ok || !response.body) throw new Error('GitHub could not provide the Windows update ZIP.')
-  const parent = path.join(downloads, 'Lone X Updates')
-  await mkdir(parent, { recursive: true })
-  const folder = await mkdtemp(path.join(parent, 'preview-'))
-  const partial = path.join(folder, name + '.part')
-  const destination = path.join(folder, name)
-  try {
-    let size = 0
-    const hash = createHash('sha256')
-    const verify = new Transform({
-      transform(chunk, _encoding, done) {
-        size += chunk.length
-        if (size > expectedSize) return done(new Error('The update exceeded its expected size.'))
-        hash.update(chunk)
-        done(null, chunk)
-      }
-    })
-    await pipeline(Readable.fromWeb(response.body), verify, createWriteStream(partial, { flags: 'wx' }), { signal })
-    if (size !== expectedSize || hash.digest('hex') !== digest) throw new Error('The update ZIP did not match GitHub’s checksum.')
-    signal.throwIfAborted()
-    await rename(partial, destination)
-    return 'Windows update downloaded and verified.\n' + destination +
-      '\nClose Lone X, extract the entire ZIP to a new folder, and open Lone X.exe from that folder.'
-  } catch (error) {
-    await rm(partial, { force: true }).catch(() => {})
-    await rmdir(folder).catch(() => {})
-    throw error
-  }
+  const destination = await saveVerifiedDownload({
+    body: response.body, parent: path.join(downloads, 'Lone X Updates'), prefix: 'preview-', name,
+    size: update.size, sha256: update.digest, signal,
+    mismatch: 'The update ZIP did not match GitHub’s checksum.',
+    oversized: 'The update exceeded its expected size.'
+  })
+  return 'Windows update downloaded and verified.\n' + destination +
+    '\nClose Lone X, extract the entire ZIP to a new folder, and open Lone X.exe from that folder.'
 }
 
 module.exports = { checkUpdate, downloadUpdate, upToDate, versionLabel }

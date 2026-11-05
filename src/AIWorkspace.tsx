@@ -3,21 +3,13 @@ import { Cpu, Ellipsis, FileText, MessageSquare, Plus, Radio, Trash2, UserRound 
 import LatticeLoader from './react-bits/LatticeLoader'
 import PromptBar, { type PromptBarSendDetail } from './react-bits/PromptBar'
 import type { Usage } from './OverviewActivity'
+import { chatModels, defaultModel, type ModelInventoryItem, type ModelProgress } from './modelCatalog'
 
 type Conversation = { id: string; title: string; updatedAt: number }
 
-const defaultModel = 'qwen2.5:0.5b'
-const coderModel = 'qwen2.5-coder:0.5b'
-const gemmaModel = 'gemma3:1b'
 const fileSources = [{ key: 'files', name: 'Add files', description: 'Attach local text or source files', icon: <FileText size={15} />, attach: true }]
 const responseEfforts = ['Short', 'Balanced', 'Detailed']
 const loadingLabels = ['Thinking…', 'Yosichufying…']
-
-const chatModels = [
-  { key: defaultModel, name: 'Qwen2.5 0.5B', tag: 'Local' },
-  { key: coderModel, name: 'Qwen2.5 Coder 0.5B', tag: 'Local' },
-  { key: gemmaModel, name: 'Gemma 3 1B', tag: 'Local' }
-]
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -27,6 +19,9 @@ declare global {
       plan: (task: string) => Promise<{ summary: string; steps: { action: string; verify: string; tool?: 'version' | 'memory' | 'get-location' }[] } | null>
       history: (id?: string) => Promise<Message[]>
       models: () => Promise<string[]>
+      modelInventory: () => Promise<ModelInventoryItem[]>
+      stopModel: () => Promise<void>
+      onModelProgress: (callback: (progress: ModelProgress) => void) => () => void
       overview: () => Promise<Usage>
       overviewUpdate: () => Promise<string | null>
       send: (input: { model: string; text: string; chatId: string; effort?: string }) => Promise<Message[] | null>
@@ -208,6 +203,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     } finally {
       setPending('')
       setResponse('')
+      window.dispatchEvent(new Event('lone-x-usage-changed'))
     }
   }
 
@@ -282,7 +278,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
       {needsModel && <div className="ai-model-actions">
         {installing ? <>
           <LatticeLoader label={'Downloading ' + modelName} color="var(--accent)" />
-          <button className="provider-button" type="button" onClick={() => void api.stop().catch(() => setError('Could not stop the model download.'))}>Cancel download</button>
+          <button className="provider-button" type="button" onClick={() => void api.stopModel().catch(() => setError('Could not stop the model download.'))}>Cancel download</button>
         </> : <button className="provider-button" type="button" onClick={() => void installModel()}>Download {modelName}</button>}
       </div>}
       {error && <p className="chat-error" role="alert">{error}</p>}

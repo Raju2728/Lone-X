@@ -1,5 +1,5 @@
 {
-  "consentRevision": 1,
+  "consentRevision": 2,
   "operator": "Raju, creator of Lone X",
   "privacyEmail": "lonex.chat@gmail.com",
   "documents": {
@@ -38,20 +38,21 @@
     },
     "privacy": {
       "title": "Privacy Policy",
-      "version": "1.0",
+      "version": "1.1",
       "sections": [
         { "heading": "1. Scope and privacy choices", "paragraphs": [
           "This notice covers the Lone X website and Windows app. Acknowledging it confirms that you have been shown the notice. It does not give blanket permission for optional processing. Optional services process information when you configure or use them. The operator handles information only for the purposes described here, subject to applicable law."
         ] },
         { "heading": "2. Information on your PC", "paragraphs": [
           "The app stores your local account email and a salted password hash in SQLite. A local sign-in session lasts up to three days and uses Windows protected storage where available. Your legal acceptance receipt contains the acceptance time in UTC and the document versions. It is encrypted with the operating system's protected storage and kept in the local app profile.",
-          "Chat prompts, replies, attached text, titles, drafts, preferences, usage counts and command audit records are stored locally. Saved chat messages expire after 30 days and can be deleted sooner from Chat. Drafts, account details, preferences, audit records and aggregate usage can remain until you remove the corresponding local profile data. Removing the app files alone may leave that data on the PC.",
+          "Chat prompts, replies, attached text, titles, drafts, preferences, usage counts and audit records for commands, software installation and application launches are stored locally. Saved chat messages expire after 30 days and can be deleted sooner from Chat. Drafts, account details, preferences, audit records and aggregate usage can remain until you remove the corresponding local profile data. Removing the app files alone may leave that data on the PC.",
           "Projects can read files you select. Approved edits, backup files and downloaded files are written to disk. When you use dictation, the app requests a transcript from the installed Windows speech recognizer. The app does not save microphone recordings."
         ] },
         { "heading": "3. Local AI and network requests", "paragraphs": [
           "Lone X sends chat input, selected attachment text and related context to the local Ollama runtime. In builds that offer repair proposals, a requested proposal also sends selected source and recent test output to that runtime. Lone X does not send these inputs to OpenAI or Google AI Studio or use them to train its own models.",
           "Model downloads contact the Ollama registry. Update checks and Windows downloads contact GitHub. In builds with npm tools, approved installs or project scripts may contact package registries or other services as configured by the project. These requests can reveal network information such as your IP address and the requested file, model or package.",
-          "If SMTP is configured, account confirmation, password reset and update email can share the recipient address and message content with your chosen mail provider. Password reset codes are held temporarily in app memory. In builds with a configured optional resource API, the app sends its reader token and catalog or download requests to that service. Local chat works without the resource API."
+          "If SMTP is configured, account confirmation, password reset and update email can share the recipient address and message content with your chosen mail provider. Password reset codes are held temporarily in app memory. In builds with a configured optional resource API, the app sends its reader token and catalog or download requests to that service. Local chat works without the resource API.",
+          "In builds with the browser workspace, opening an approved website sends normal browser requests to that site and its providers, including your IP address and browser information. The workspace uses a separate temporary browser session for cookies and site data. That session is cleared when its window closes. The selected website's privacy policy governs information it receives, including any information you submit to it."
         ] },
         { "heading": "4. Website and communications", "paragraphs": [
           "The website saves your theme choice in browser storage. The site code does not set advertising cookies or include an analytics SDK. Vercel hosts the site and can process network and request information, including IP addresses, for delivery, logging and security. GitHub handles release downloads under its own privacy terms.",

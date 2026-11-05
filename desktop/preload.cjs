@@ -1,13 +1,46 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+contextBridge.exposeInMainWorld('loneXBrowser', {
+  navigate: action => ipcRenderer.invoke('browser:navigate', action),
+  open: url => ipcRenderer.invoke('browser:open', url),
+  status: () => ipcRenderer.invoke('browser:status'),
+  stop: () => ipcRenderer.invoke('browser:stop'),
+  close: () => ipcRenderer.invoke('browser:close')
+})
+
+contextBridge.exposeInMainWorld('loneXAutomation', {
+  status: () => ipcRenderer.invoke('automation:status'),
+  launch: id => ipcRenderer.invoke('automation:launch', id),
+  cancel: () => ipcRenderer.invoke('automation:cancel')
+})
+
+contextBridge.exposeInMainWorld('loneXSoftware', {
+  inventory: () => ipcRenderer.invoke('software:inventory'),
+  plan: id => ipcRenderer.invoke('software:plan', id),
+  install: id => ipcRenderer.invoke('software:install', id)
+})
+
 contextBridge.exposeInMainWorld('loneXLegal', {
   status: () => ipcRenderer.invoke('legal:status'),
   accept: input => ipcRenderer.invoke('legal:accept', input)
 })
 
+contextBridge.exposeInMainWorld('loneXResources', {
+  list: () => ipcRenderer.invoke('resources:list'),
+  download: input => ipcRenderer.invoke('resources:download', input),
+  stop: () => ipcRenderer.invoke('resources:stop')
+})
+
 contextBridge.exposeInMainWorld('loneXAI', {
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),
+  modelInventory: () => ipcRenderer.invoke('ai:model-inventory'),
+  stopModel: () => ipcRenderer.invoke('ai:stop-model'),
+  onModelProgress: callback => {
+    const listener = (_event, progress) => callback(progress)
+    ipcRenderer.on('ai:model-progress', listener)
+    return () => ipcRenderer.removeListener('ai:model-progress', listener)
+  },
   overview: () => ipcRenderer.invoke('ai:overview'),
   overviewUpdate: () => ipcRenderer.invoke('ai:overview-update'),
   installModel: model => ipcRenderer.invoke('ai:install-model', model),
@@ -26,9 +59,19 @@ contextBridge.exposeInMainWorld('loneXAI', {
 })
 
 contextBridge.exposeInMainWorld('loneXProjects', {
+  inspectNpm: () => ipcRenderer.invoke('projects:inspect-npm'),
+  proposeFix: () => ipcRenderer.invoke('projects:propose-fix'),
+  runNpm: action => ipcRenderer.invoke('projects:run-npm', action),
+  stopNpm: () => ipcRenderer.invoke('projects:stop-npm'),
+  onNpmOutput: callback => {
+    const listener = (_event, chunk) => callback(chunk)
+    ipcRenderer.on('projects:npm-output', listener)
+    return () => ipcRenderer.removeListener('projects:npm-output', listener)
+  },
   open: () => ipcRenderer.invoke('projects:open'),
   preview: () => ipcRenderer.invoke('projects:preview'),
   saveCopy: text => ipcRenderer.invoke('projects:save-copy', text),
+  applySourceEdit: text => ipcRenderer.invoke('projects:apply-source-edit', text),
   createStarter: () => ipcRenderer.invoke('projects:create-starter'),
   checkStarter: () => ipcRenderer.invoke('projects:check-starter'),
   repairStarter: () => ipcRenderer.invoke('projects:repair-starter'),

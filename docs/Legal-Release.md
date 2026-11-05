@@ -14,3 +14,7 @@ The privacy acknowledgment confirms notice. Obtain any legally required consent 
 - [Digital Personal Data Protection Rules, 2025](https://www.meity.gov.in/static/uploads/2025/11/53450e6e5dc0bfa85ebd78686cadad39.pdf)
 - [Information Technology Act, 2000](https://www.indiacode.nic.in/bitstream/123456789/13116/1/it_act_2000_updated.pdf) and [Consumer Protection Act, 2019](https://www.indiacode.nic.in/indiacode/handle/123456789/16103?view_type=browse)
 - [Vercel Privacy Notice](https://vercel.com/legal/privacy-notice) and [bundled Qwen model license information](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct)
+
+## Policy update: 5 November 2026
+
+Terms 1.1, Privacy 1.5 and EULA 1.1 are published with consent revision 6. `/eula` joins `/terms` and `/privacy` on the website. Material operational disclosures cover PC-wide access, per-action review, project script privileges, backups and local data removal. Receipts with an outdated document version are rejected even if their revision matches. The operator is identified only as Raju with the supplied contact email; no unconfirmed entity, address or legal certification is invented. The remaining operator identity, licensing and professional review checks above still apply. DPDP commencement is phased; the policy refers to applicable provisions as they take effect.

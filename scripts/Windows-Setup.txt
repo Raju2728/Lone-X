@@ -141,3 +141,18 @@ APPLICATION ICON
 Lone X.exe contains the supplied Lone X logo as its Windows icon. The ZIP
 also includes Lone-X.ico for use with custom Windows shortcuts. The same
 logo is used for the app window and taskbar identity.
+
+SHORTCUT AND TASKBAR ICON
+
+After extraction, run Create-Desktop-Shortcut.cmd to create a Desktop shortcut
+with the Lone X logo pointing to this copy. It asks before replacing an existing
+shortcut. Close older copies first. If a pinned taskbar item still shows an old
+icon, unpin that old item, launch the new Lone X.exe, and pin the running app.
+Do not run the app from inside the ZIP or move the extracted folder after
+creating its shortcut; recreate the shortcut if the folder moves.
+
+LEGAL AGREEMENTS
+
+Read and accept the versioned Terms, Privacy Policy and EULA on first launch.
+A significant policy update requires renewed acceptance. These documents are
+always available in Settings > Legal & Policies.

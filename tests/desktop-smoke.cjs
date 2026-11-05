@@ -289,6 +289,11 @@ async function runSmoke() {
   assert.equal(await window.webContents.executeJavaScript('window.loneXLegal.status()'), null)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
   legalDb.prepare('INSERT INTO consent VALUES (?, ?)').run(accepted.revision, receipt.receipt)
+  const outdated = { ...accepted, versions: { ...accepted.versions, privacy: 'outdated' } }
+  legalDb.prepare('UPDATE consent SET receipt = ? WHERE revision = ?').run(safeStorage.encryptString(JSON.stringify(outdated)), accepted.revision)
+  assert.equal(await window.webContents.executeJavaScript('window.loneXLegal.status()'), null)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
+  legalDb.prepare('UPDATE consent SET receipt = ? WHERE revision = ?').run(receipt.receipt, accepted.revision)
   legalDb.close()
   await window.loadFile(require('node:path').join(__dirname, '../dist/index.html'), { hash: 'workspace' })
   assert.deepEqual(await window.webContents.executeJavaScript('window.loneXLegal.status()'), accepted)

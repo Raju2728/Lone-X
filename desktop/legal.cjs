@@ -20,7 +20,7 @@ function registerLegal(app, rendererPath) {
     try {
       const receipt = JSON.parse(safeStorage.decryptString(Buffer.from(row.receipt)))
       if (receipt.revision !== policy.consentRevision || !Number.isFinite(Date.parse(receipt.acceptedAt)) ||
-          !Object.keys(versions).every(id => typeof receipt.versions?.[id] === 'string' && receipt.versions[id])) return null
+          !Object.keys(versions).every(id => receipt.versions?.[id] === versions[id])) return null
       return receipt
     } catch {
       return null

@@ -1,95 +1,170 @@
 {
-  "consentRevision": 5,
+  "consentRevision": 6,
   "operator": "Raju, creator of Lone X",
   "privacyEmail": "lonex.chat@gmail.com",
   "documents": {
     "terms": {
       "title": "Terms & Conditions",
-      "version": "1.0",
+      "version": "1.1",
       "sections": [
-        { "heading": "1. Scope and agreement", "paragraphs": [
-          "These terms govern use of the Lone X website and Windows desktop application. The EULA governs use of the desktop software and its distributed components. The Privacy Policy describes how information is handled. The desktop terms and EULA take effect when you accept them. You may browse the website to read the policies before deciding whether to use the app.",
-          "Lone X is intended for users aged 18 or older who can enter a binding agreement. If you use it for an organisation, you must have authority to act for that organisation."
-        ] },
-        { "heading": "2. Accounts and authorised use", "paragraphs": [
-          "Keep your local account credentials secure and control access to your Windows profile. Use the app only on devices, files, accounts and systems you own or have permission to access. Review the scope and consequences of file changes, commands, installations and other actions before authorising them. Keep backups of important files.",
-          "Do not use Lone X to access systems without permission, deploy malware, evade security controls, commit fraud, harass others, infringe rights, distribute unlawful content, or interfere with the website or service. Do not misrepresent an official affiliation with Lone X."
-        ] },
-        { "heading": "3. Your content and AI output", "paragraphs": [
-          "You retain any rights you hold in your prompts, attachments and project files. You authorise the app to process the material you choose to provide as needed to carry out your requests. Submit only material you are entitled to use.",
-          "Model output may be inaccurate, incomplete, insecure, similar to other output or subject to third-party rights. Review, test and verify it before relying on it or applying a change. AI output is not a substitute for professional advice or independent review in high-impact decisions. Lone X does not claim ownership of your AI output solely because you generated it with the app."
-        ] },
-        { "heading": "4. Intellectual property and third parties", "paragraphs": [
-          "The Lone X name, logo, original designs, documentation and software are protected by applicable law. The operator and contributors retain their respective rights. The EULA and applicable source licenses govern the permissions granted. You may describe the product accurately without implying endorsement.",
-          "Hosting, distribution, model libraries, email providers and software repositories have their own terms. A provider can change or discontinue its service. Lone X's terms do not reduce rights granted directly to you by a third-party license."
-        ] },
-        { "heading": "5. Updates, access and termination", "paragraphs": [
-          "Preview features may change or be discontinued. Updates may address security, compatibility or legal requirements. If a material change requires renewed agreement, the desktop app will show the updated documents before you continue.",
-          "You can stop using Lone X and uninstall or remove it. The operator may restrict access to hosted services for material misuse, security reasons or legal obligations. Where practicable, the operator will give notice and an opportunity to address the issue. Termination does not change accrued rights, duties or applicable third-party license grants."
-        ] },
-        { "heading": "6. Warranties and liability", "paragraphs": [
-          "To the extent permitted by law, preview software and the website are provided as available and without implied warranties of fitness, merchantability or non-infringement. Availability, accuracy and uninterrupted operation are not guaranteed.",
-          "To the extent permitted by law, the operator and contributors are not liable for indirect or consequential loss arising from use of Lone X. These terms do not exclude liability for fraud, wilful misconduct, death or personal injury where exclusion is prohibited, or any liability or consumer remedy that cannot lawfully be limited."
-        ] },
-        { "heading": "7. Governing law and disputes", "paragraphs": [
-          "The laws of India govern these terms, subject to mandatory protections in the place where you live. You may first contact the operator to try to resolve a dispute. This does not limit access to a competent court, consumer commission, regulator or other forum available by law."
-        ] }
+        {
+          "heading": "1. Scope and agreement",
+          "paragraphs": [
+            "These terms govern use of the Lone X website and Windows desktop application. The EULA governs use of the desktop software and its distributed components. The Privacy Policy describes how information is handled. The desktop terms and EULA take effect when you accept them. You may browse the website to read the policies before deciding whether to use the app.",
+            "Lone X is intended for users aged 18 or older who can enter a binding agreement. If you use it for an organisation, you must have authority to act for that organisation."
+          ]
+        },
+        {
+          "heading": "2. Accounts and authorised use",
+          "paragraphs": [
+            "Keep your local account credentials secure and control access to your Windows profile. Use the app only on devices, files, accounts and systems you own or have permission to access. Review the scope and consequences of file changes, commands, installations and other actions before authorising them. Keep backups of important files.",
+            "Do not use Lone X to access systems without permission, deploy malware, evade security controls, commit fraud, harass others, infringe rights, distribute unlawful content, or interfere with the website or service. Do not misrepresent an official affiliation with Lone X."
+          ]
+        },
+        {
+          "heading": "3. Agent access and reviewed actions",
+          "paragraphs": [
+            "Chat can request access to a selected folder or, after a separate Windows confirmation, accessible local drives in PC-wide mode. Access lasts for the app session and can be disconnected. Accepting these terms does not approve a file operation. Review the destination, proposed content or command and approve each supported agent change separately. Windows permissions still apply; the app does not grant administrator rights.",
+            "File tools support bounded text-file operations, folder creation and reviewed recycling. Credential paths, links and protected system locations are restricted. These checks are not a security sandbox: approved npm scripts run with your Windows permissions and can access files or networks outside the selected folder. Inspect projects and scripts before approving them. Stop cancels further work; completed changes and backups remain. Verify results and keep independent backups.",
+            "English and Thanglish instructions are supported through local model guidance; accuracy and language quality vary. Model-generated plans and tool requests may be incorrect. Never use the app for actions you are not authorised to perform."
+          ]
+        },
+        {
+          "heading": "4. Your content and AI output",
+          "paragraphs": [
+            "You retain any rights you hold in your prompts, attachments and project files. You authorise the app to process the material you choose to provide as needed to carry out your requests. Submit only material you are entitled to use.",
+            "Model output may be inaccurate, incomplete, insecure, similar to other output or subject to third-party rights. Review, test and verify it before relying on it or applying a change. AI output is not a substitute for professional advice or independent review in high-impact decisions. Lone X does not claim ownership of your AI output solely because you generated it with the app."
+          ]
+        },
+        {
+          "heading": "5. Intellectual property and third parties",
+          "paragraphs": [
+            "The Lone X name, logo, original designs, documentation and software are protected by applicable law. The operator and contributors retain their respective rights. The EULA and applicable source licenses govern the permissions granted. You may describe the product accurately without implying endorsement.",
+            "Hosting, distribution, model libraries, email providers and software repositories have their own terms. A provider can change or discontinue its service. Lone X's terms do not reduce rights granted directly to you by a third-party license."
+          ]
+        },
+        {
+          "heading": "6. Updates, access and termination",
+          "paragraphs": [
+            "Preview features may change or be discontinued. Updates may address security, compatibility or legal requirements. If a material change requires renewed agreement, the desktop app will show the updated documents before you continue.",
+            "You can stop using Lone X and uninstall or remove it. The operator may restrict access to hosted services for material misuse, security reasons or legal obligations. Where practicable, the operator will give notice and an opportunity to address the issue. Termination does not change accrued rights, duties or applicable third-party license grants.",
+            "This is a Windows x64 Beta preview. Optional models require an initial internet download and extra disk and memory. The app enforces local five-hour and seven-day usage windows; they are Lone X allowances, independent of OpenAI subscriptions. Updates download a verified ZIP from GitHub and require manual extraction. There is no guarantee of compatibility with every PC."
+          ]
+        },
+        {
+          "heading": "7. Warranties and liability",
+          "paragraphs": [
+            "To the extent permitted by law, preview software and the website are provided as available and without implied warranties of fitness, merchantability or non-infringement. Availability, accuracy and uninterrupted operation are not guaranteed.",
+            "To the extent permitted by law, the operator and contributors are not liable for indirect or consequential loss arising from use of Lone X. These terms do not exclude liability for fraud, wilful misconduct, death or personal injury where exclusion is prohibited, or any liability or consumer remedy that cannot lawfully be limited."
+          ]
+        },
+        {
+          "heading": "8. Governing law and disputes",
+          "paragraphs": [
+            "The laws of India govern these terms, subject to mandatory protections in the place where you live. You may first contact the operator to try to resolve a dispute. This does not limit access to a competent court, consumer commission, regulator or other forum available by law."
+          ]
+        }
       ]
     },
     "privacy": {
       "title": "Privacy Policy",
-      "version": "1.4",
+      "version": "1.5",
       "sections": [
-        { "heading": "1. Scope and privacy choices", "paragraphs": [
-          "This notice covers the Lone X website and Windows app. Acknowledging it confirms that you have been shown the notice. It does not give blanket permission for optional processing. Optional services process information when you configure or use them. The operator handles information only for the purposes described here, subject to applicable law."
-        ] },
-        { "heading": "2. Information on your PC", "paragraphs": [
-          "The app stores your local account email and a salted password hash in SQLite. A local sign-in session lasts up to three days and uses Windows protected storage where available. Your legal acceptance receipt contains the acceptance time in UTC and the document versions. It is encrypted with the operating system's protected storage and kept in the local app profile.",
-          "Chat prompts, replies, attached text, titles, drafts, preferences, usage counts and audit records for commands, software installation and application launches are stored locally. Saved chat messages expire after 30 days and can be deleted sooner from Chat. Drafts, account details, preferences, audit records and aggregate usage can remain until you remove the corresponding local profile data. Removing the app files alone may leave that data on the PC.",
-          "Projects and storage tools can read files and folders you select. Approved edits, backup files and downloaded files are written to disk. Storage scans inspect file names, sizes and modification information locally; reviewed files can be moved to the Windows Recycle Bin after confirmation. Scan results are kept in memory while the app is running. When you use dictation, the app requests a transcript from the installed Windows speech recognizer. The app does not save microphone recordings."
-        ] },
-        { "heading": "3. Local AI and network requests", "paragraphs": [
-          "Lone X sends chat input, selected attachment text and related context to the local Ollama runtime. Repair proposals and Chat agent mode can also send selected project file names, source text and command output to that runtime. Agent access lasts for the current app session and can be disconnected. The optional PC-wide mode requires a separate access confirmation and lets the agent discover drives and read supported text files across accessible Windows locations rather than only one folder. Windows permissions and credential-file protections apply. Proposed file changes and project commands require review; approved edits retain local backups and recycling uses Windows Recycle Bin. PC-wide backups are stored beside the affected file in a .lone-x-backups folder. Action results can appear in saved chats under the chat retention policy. Lone X does not send these inputs to OpenAI or Google AI Studio or use them to train its own models.",
-          "Model downloads contact the Ollama registry. Update checks and Windows downloads contact GitHub. In builds with npm tools, approved installs or project scripts may contact package registries or other services as configured by the project. These requests can reveal network information such as your IP address and the requested file, model or package.",
-          "If SMTP is configured, account confirmation, password reset and update email can share the recipient address and message content with your chosen mail provider. Password reset codes are held temporarily in app memory. In builds with a configured optional resource API, the app sends its reader token and catalog or download requests to that service. Local chat works without the resource API.",
-          "In builds with the browser workspace, opening an approved website sends normal browser requests to that site and its providers, including your IP address and browser information. The workspace uses a separate temporary browser session for cookies and site data. That session is cleared when its window closes. The selected website's privacy policy governs information it receives, including any information you submit to it."
-        ] },
-        { "heading": "4. Website and communications", "paragraphs": [
-          "The website saves your theme choice in browser storage. The site code does not set advertising cookies or include an analytics SDK. Vercel hosts the site and can process network and request information, including IP addresses, for delivery, logging and security. GitHub handles release downloads under its own privacy terms.",
-          "If you contact the operator, your contact details and message may be used to respond, investigate a report, protect the service or comply with applicable law. Support correspondence is kept as needed for those purposes. Network service providers may process information in the countries where they operate, subject to applicable legal requirements."
-        ] },
-        { "heading": "5. Security and retention", "paragraphs": [
-          "The app uses local password hashing and restricts access to application operations. Chat history and project files are not encrypted by Lone X. Protect your Windows account, use device encryption where appropriate, and avoid adding sensitive information you do not need to process. Hosting and third-party providers manage their own log retention under their applicable terms."
-        ] },
-        { "heading": "6. Rights and grievances", "paragraphs": [
-          "Depending on applicable law, you may request access, correction or erasure of personal information, withdraw consent for optional processing, raise a grievance or exercise other applicable rights. You can stop using optional services by removing their configuration and can delete stored chats from the app. Local data that has not been shared with the operator is managed on your PC.",
-          "For data the operator controls, contact the privacy and grievance contact listed with these policies. The operator may request proportionate information to verify your identity. You may use any complaint or appeal procedure available under applicable law, including the Digital Personal Data Protection Act, 2023 as its provisions come into force."
-        ] },
-        { "heading": "7. Children and policy changes", "paragraphs": [
-          "Lone X is intended for adults and is not directed at children. If a child has sent personal data to the operator, a parent or guardian can contact the operator to request review. Material changes will be shown in the updated policy. If new consent is required for a purpose, it will be requested separately."
-        ] }
+        {
+          "heading": "1. Scope and privacy choices",
+          "paragraphs": [
+            "This notice covers the Lone X website and Windows app. Acknowledging it confirms that you have been shown the notice. It does not give blanket permission for optional processing. Optional services process information when you configure or use them. The operator handles information only for the purposes described here, subject to applicable law."
+          ]
+        },
+        {
+          "heading": "2. Information on your PC",
+          "paragraphs": [
+            "The app stores your local account email and a salted password hash in SQLite. A local sign-in session lasts up to three days and uses Windows protected storage where available. Your legal acceptance receipt contains the acceptance time in UTC and the document versions. It is encrypted with the operating system's protected storage and kept in the local app profile.",
+            "Chat prompts, replies, attached text, titles, drafts, preferences, usage counts and audit records for commands, software installation and application launches are stored locally. Saved chat messages older than 30 days are pruned during app activity, including startup and periodic checks while running; pruning does not run while the app is closed. You can delete chats sooner. Drafts, account details, preferences, audit records and aggregate usage are separate and can remain until the corresponding local profile data is removed.",
+            "Projects and storage tools can read files and folders you select. Approved edits, backup files and downloaded files are written to disk. Storage scans inspect file names, sizes and modification information locally; reviewed files can be moved to the Windows Recycle Bin after confirmation. Scan results are kept in memory while the app is running. When you use dictation, the app requests a transcript from the installed Windows speech recognizer. The app does not save microphone recordings.",
+            "Agent reviews and results may include full file paths, snippets and command output in saved chats. Edited files and .lone-x-backups copies are stored in the selected project or beside the affected file in PC-wide mode. Those files and backups are not subject to automatic chat retention. Recycled files follow Windows Recycle Bin settings. Deleting a chat or disconnecting access does not delete project files, backups or downloaded models."
+          ]
+        },
+        {
+          "heading": "3. Local AI and network requests",
+          "paragraphs": [
+            "Lone X sends chat input, selected attachment text and related context to the local Ollama runtime. Repair proposals and Chat agent mode can also send selected project file names, source text and command output to that runtime. Agent access lasts for the current app session and can be disconnected. The optional PC-wide mode requires a separate access confirmation and lets the agent discover drives and read supported text files across accessible Windows locations rather than only one folder. Windows permissions and credential-file protections apply. Proposed file changes and project commands require review; approved edits retain local backups and recycling uses Windows Recycle Bin. PC-wide backups are stored beside the affected file in a .lone-x-backups folder. Action results can appear in saved chats under the chat retention policy. Lone X does not send these inputs to OpenAI or Google AI Studio or use them to train its own models.",
+            "Model downloads contact the Ollama registry. Update checks and Windows downloads contact GitHub. In builds with npm tools, approved installs or project scripts may contact package registries or other services as configured by the project. These requests can reveal network information such as your IP address and the requested file, model or package. Reviewed software installs can also contact WinGet sources and publisher servers. Optional local models include Qwen2.5 Coder, Gemma 3 and Qwen3 Instruct; model selection does not enable a hosted AI API.",
+            "If SMTP is configured, account-created notifications, password reset and update email can share the recipient address and message content with your chosen mail provider. Password reset codes are held temporarily in app memory. In builds with a configured optional resource API, the app sends its reader token and catalog or download requests to that service. Local chat works without the resource API.",
+            "In builds with the browser workspace, opening an approved website sends normal browser requests to that site and its providers, including your IP address and browser information. The workspace uses a separate temporary browser session for cookies and site data. That session is cleared when its window closes. The selected website's privacy policy governs information it receives, including any information you submit to it.",
+            "The distributed ZIP includes the Ollama CPU runtime and default Qwen2.5 model. Optional downloads use the bundled runtime's own model storage, separate from a standalone Ollama installation. Local prompts are processed on the PC; they are not uploaded to the founder for model training. The optional cloud resource service is not enabled in the public Beta by default and is not required for chat."
+          ]
+        },
+        {
+          "heading": "4. Website and communications",
+          "paragraphs": [
+            "The website saves your theme choice in browser storage. The site code does not set advertising cookies or include an analytics SDK. Vercel hosts the site and can process network and request information, including IP addresses, for delivery, logging and security. GitHub handles release downloads under its own privacy terms.",
+            "If you contact the operator, your contact details and message may be used to respond, investigate a report, protect the service or comply with applicable law. Support correspondence is kept as needed for those purposes. Network service providers may process information in the countries where they operate, subject to applicable legal requirements."
+          ]
+        },
+        {
+          "heading": "5. Security and retention",
+          "paragraphs": [
+            "The app uses local password hashing and restricts access to application operations. Chat history and project files are not encrypted by Lone X. Protect your Windows account, use device encryption where appropriate, and avoid adding sensitive information you do not need to process. Hosting and third-party providers manage their own log retention under their applicable terms.",
+            "The included uninstaller removes that extracted app copy and bundled models. Local accounts, chats and settings are retained by default; the documented -RemoveUserData option additionally removes the Lone X profiles. External projects, backups, downloads and a separately installed Ollama remain. Moving to a new ZIP does not by itself erase the previous copy or profile. Website storage can be removed through your browser settings."
+          ]
+        },
+        {
+          "heading": "6. Rights and grievances",
+          "paragraphs": [
+            "Depending on applicable law, you may request access, correction or erasure of personal information, withdraw consent for optional processing, raise a grievance or exercise other applicable rights. You can stop using optional services by removing their configuration and can delete stored chats from the app. Local data that has not been shared with the operator is managed on your PC.",
+            "For data the operator controls, contact the privacy and grievance contact listed with these policies. The operator may request proportionate information to verify your identity. You may use any complaint or appeal procedure available under applicable law, including the Digital Personal Data Protection Act, 2023 as its provisions come into force.",
+            "Raju is the operator and privacy/grievance contact at lonex.chat@gmail.com. Describe your request without sending passwords, model secrets or unnecessary file contents. Applicable Indian information technology and data protection requirements, including the DPDP Act and Rules as their provisions take effect, and mandatory rights in other applicable jurisdictions remain available. This notice does not assert legal certification or replace rights provided by law."
+          ]
+        },
+        {
+          "heading": "7. Children and policy changes",
+          "paragraphs": [
+            "Lone X is intended for adults and is not directed at children. If a child has sent personal data to the operator, a parent or guardian can contact the operator to request review. Material changes will be shown in the updated policy. If new consent is required for a purpose, it will be requested separately."
+          ]
+        }
       ]
     },
     "eula": {
       "title": "End-User License Agreement",
-      "version": "1.0",
+      "version": "1.1",
       "sections": [
-        { "heading": "1. License to use the desktop app", "paragraphs": [
-          "Subject to this agreement, the Lone X operator grants you a non-exclusive license to install and run the distributed Lone X Windows application on devices you own or control, for personal or internal organisational use. You may keep a backup copy. Ownership of the software and brand does not transfer to you."
-        ] },
-        { "heading": "2. Source code and third-party components", "paragraphs": [
-          "This agreement covers Lone X's own contributions in the distributed application. Separate notices and licenses apply to third-party software, models and assets, including Electron, React Bits, Ollama and the model weights. Their terms control those components if there is a conflict.",
-          "Source code available through GitHub is subject to any license supplied with the applicable files and to rights available under GitHub's terms and applicable law. This agreement does not revoke earlier license grants or impose additional restrictions on material covered by a separate license."
-        ] },
-        { "heading": "3. Restrictions and retained rights", "paragraphs": [
-          "Except to the extent allowed by a separate license or applicable law, do not redistribute the proprietary parts of the application, sublicense them, remove their notices, circumvent technical protection measures or reverse engineer those parts. Rights that applicable law grants for interoperability, study, repair or other permitted purposes remain available.",
-          "You may not present a modified build as an official Lone X release or use the brand in a way that implies endorsement without permission. Keep copyright and license notices where required."
-        ] },
-        { "heading": "4. Updates, termination and remedies", "paragraphs": [
-          "The license applies to updates supplied under this agreement. The license may end after a material violation, subject to applicable law and any notice or cure rights. You may end it by stopping use and removing the application. Separate component licenses and your rights in your own files remain in effect.",
-          "The warranty, liability, governing law and dispute provisions in the Terms & Conditions also apply to this license. Mandatory consumer rights and remedies remain available."
-        ] }
+        {
+          "heading": "1. License to use the desktop app",
+          "paragraphs": [
+            "Subject to this agreement, the Lone X operator grants you a non-exclusive license to install and run the distributed Lone X Windows application on devices you own or control, for personal or internal organisational use. You may keep a backup copy. Ownership of the software and brand does not transfer to you."
+          ]
+        },
+        {
+          "heading": "2. Source code and third-party components",
+          "paragraphs": [
+            "This agreement covers Lone X's own contributions in the distributed application. Separate notices and licenses apply to third-party software, models and assets, including Electron, React Bits, Ollama and the model weights. Their terms control those components if there is a conflict.",
+            "Source code available through GitHub is subject to any license supplied with the applicable files and to rights available under GitHub's terms and applicable law. This agreement does not revoke earlier license grants or impose additional restrictions on material covered by a separate license."
+          ]
+        },
+        {
+          "heading": "3. Restrictions and retained rights",
+          "paragraphs": [
+            "Except to the extent allowed by a separate license or applicable law, do not redistribute the proprietary parts of the application, sublicense them, remove their notices, circumvent technical protection measures or reverse engineer those parts. Rights that applicable law grants for interoperability, study, repair or other permitted purposes remain available.",
+            "You may not present a modified build as an official Lone X release or use the brand in a way that implies endorsement without permission. Keep copyright and license notices where required."
+          ]
+        },
+        {
+          "heading": "4. Local models, files and removal",
+          "paragraphs": [
+            "Bundled and optional models remain subject to their own model licenses and notices. Downloading a model does not transfer ownership of it or permit uses prohibited by its license. You are responsible for the rights needed for material you submit and for reviewing generated output.",
+            "Agent operations require the separate access and action reviews described in the Terms. You retain rights in your own files. Uninstalling the portable app removes its folder; local profile removal is optional and external projects and backups are preserved. Read Windows-Setup.txt before updating or uninstalling."
+          ]
+        },
+        {
+          "heading": "5. Updates, termination and remedies",
+          "paragraphs": [
+            "The license applies to updates supplied under this agreement. The license may end after a material violation, subject to applicable law and any notice or cure rights. You may end it by stopping use and removing the application. Separate component licenses and your rights in your own files remain in effect.",
+            "The warranty, liability, governing law and dispute provisions in the Terms & Conditions also apply to this license. Mandatory consumer rights and remedies remain available."
+          ]
+        }
       ]
     }
-  }
+  },
+  "updatedAt": "2026-11-05"
 }

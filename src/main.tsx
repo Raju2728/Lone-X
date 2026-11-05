@@ -56,12 +56,15 @@ const capabilities = [
 ]
 
 const shippedFeatures = [
-  { icon: MessageSquare, title: 'Offline AI chat', detail: 'Raju streams replies from the bundled qwen2.5:0.5b model. Chat runs on your PC without an API key.' },
-  { icon: History, title: 'Saved conversations', detail: 'Start a new chat, reopen or delete an older one, and keep history locally for up to 30 days.' },
-  { icon: Folder, title: 'Local project tools', detail: 'Choose a folder to list its contents, preview UTF-8 text files, and save a new copy.' },
-  { icon: ListChecks, title: 'Reviewable task plans', detail: 'Draft ordered steps and a verification check for each step using the local model.' },
-  { icon: Terminal, title: 'PowerShell diagnostics', detail: 'Run a fixed set of read-only commands, stop a running command, and review its local audit entry.' },
-  { icon: ShieldCheck, title: 'Local account and updates', detail: 'Sign in with a local account and check for verified Windows updates from the terminal.' }
+  { icon: MessageSquare, title: 'Local AI, your choice', detail: 'Bundled Qwen2.5 chat without an API key. Download Qwen2.5 Coder, Gemma 3 or Qwen3 Instruct from the app. English and Thanglish guidance works across all four models; quality varies.' },
+  { icon: Folder, title: 'A hands-on file agent', detail: 'Ask Raju to create folders, read or edit supported text files, and recycle files. Choose a folder or approve session-only PC-wide access. Review each change; edits keep backups.' },
+  { icon: ShieldCheck, title: 'You review the action', detail: 'See file destinations, proposed content and project commands before approving. Disconnect agent access when finished. Windows permissions and protected-path checks apply.' },
+  { icon: History, title: 'Conversations that stay local', detail: 'Reopen or delete chats, keep local drafts, and follow usage limits. Saved messages older than 30 days are pruned when the app runs.' },
+  { icon: Boxes, title: 'Projects and development tools', detail: 'Preview text, save copies, review in-place edits and run approved npm tasks. Install Node.js, Git or 7-Zip through reviewed WinGet workflows.' },
+  { icon: Terminal, title: 'Windows tools in one place', detail: 'Use PowerShell diagnostics, review storage and Recycle Bin actions, launch supported apps, or open an approved website in an isolated browser workspace.' },
+  { icon: ListChecks, title: 'Plans, activity and limits', detail: 'Draft reviewable task plans, inspect recent activity, and see remaining five-hour and weekly allowances with reset times.' },
+  { icon: Download, title: 'A portable Windows Beta', detail: 'Includes Ollama, the default model, setup instructions, a shortcut creator and an uninstaller. Check GitHub updates from the app and download a verified ZIP.' },
+  { icon: ShieldCheck, title: 'Privacy and clear agreements', detail: 'A local account, a three-day sign-in session and versioned legal acceptance. Review Terms, Privacy and EULA any time in Settings.' }
 ]
 
 function DesktopDownloads() {
@@ -76,7 +79,7 @@ function DesktopDownloads() {
           <div>
             <strong>Windows 64-bit (x64)</strong>
             <p className="muted">Windows 10 version 22H2 or later on an x64 processor. Allow about 2 GB of free storage for the ZIP and extracted files.</p>
-            <p className="muted">The preview uses your CPU for inference. It includes Ollama and the default model. Extract the full ZIP and follow Windows-Setup.txt.</p>
+            <p className="muted">The Beta uses your CPU for inference and includes Ollama and the default model. We recommend 8 GB RAM for basic chat and 16 GB for the optional 4B agent model; speed varies by PC. Optional model downloads need extra disk space. Extract the full ZIP and follow Windows-Setup.txt.</p>
             {downloadUrl && <a className="primary" href={downloadUrl}><Download size={17} aria-hidden="true" /> Download for Windows x64</a>}
           </div>
           <div><strong>Windows 32-bit (x86)</strong><p className="muted">Unavailable. The current preview requires 64-bit Windows.</p></div>
@@ -190,8 +193,8 @@ function App() {
   }
 
   const legalPath = location.pathname.replace(/\/$/, '')
-  if (legalPath === '/terms' || legalPath === '/privacy') {
-    return <WebsiteLegalPage name={legalPath === '/terms' ? 'terms' : 'privacy'} />
+  if (legalPath === '/terms' || legalPath === '/privacy' || legalPath === '/eula') {
+    return <WebsiteLegalPage name={legalPath.slice(1) as 'terms' | 'privacy' | 'eula'} />
   }
 
   const showCursorGrid = theme === 'dark' && !reduceMotion

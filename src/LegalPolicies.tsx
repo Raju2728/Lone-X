@@ -19,7 +19,7 @@ declare global {
 function DocumentBody({ name }: { name: LegalDocument }) {
   const document = policy.documents[name]
   return <div className="legal-copy">
-    <p className="muted">Version {document.version} · {policy.operator}</p>
+    <p className="muted">Version {document.version} · Updated {policy.updatedAt} · {policy.operator}</p>
     {document.sections.map(section => <section key={section.heading}>
       <h2>{section.heading}</h2>
       {section.paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
@@ -49,6 +49,7 @@ export function WebsiteLegalFooter() {
     <nav aria-label="Legal">
       <a href="/terms">Terms &amp; Conditions</a>
       <a href="/privacy">Privacy Policy</a>
+      <a href="/eula">EULA</a>
     </nav>
   </footer>
 }

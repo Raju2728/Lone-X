@@ -17,6 +17,8 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'Application icon embedding failed.' }
         Copy-Item -LiteralPath 'public/logo.ico' -Destination (Join-Path $bundle.FullName 'Lone-X.ico')
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Windows-Setup.txt') -Destination $bundle.FullName
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Create-Desktop-Shortcut.ps1') -Destination $bundle.FullName
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Create-Desktop-Shortcut.cmd') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.ps1') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.cmd') -Destination $bundle.FullName
         $app = New-Item -ItemType Directory (Join-Path $bundle.FullName 'resources/app')

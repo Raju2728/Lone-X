@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron')
+const { app, BrowserWindow, session, nativeImage } = require('electron')
 const path = require('node:path')
 const { registerAI } = require('./ai.cjs')
 const { registerProjects } = require('./projects.cjs')
@@ -22,8 +22,15 @@ function createWindow() {
     minWidth: 760,
     minHeight: 560,
     backgroundColor: '#000000',
-    icon: path.join(__dirname, '../public/logo.ico'),
+    icon: nativeImage.createFromPath(path.join(__dirname, '../public/logo.png')),
     webPreferences: { devTools: false, sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
+  })
+  if (process.platform === 'win32') window.setAppDetails({
+    appId: 'LoneX.Desktop',
+    appIconPath: path.join(__dirname, '../public/logo.ico'),
+    appIconIndex: 0,
+    relaunchCommand: app.isPackaged ? `"${process.execPath}"` : `"${process.execPath}" "${app.getAppPath()}"`,
+    relaunchDisplayName: 'Lone X'
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', event => event.preventDefault())

@@ -106,6 +106,10 @@ Desktop-targeted file prompts now request access to the actual Windows Desktop, 
 
 The exact prompt "Create A New text file in Desktop and write Welcome to LoneX in it" passed the rendered Chat test with a temporary Desktop, native access approval and file-change review. A live Qwen3 Instruct run created Welcome.txt containing Welcome to LoneX in an isolated Desktop fixture (1,750 reported tokens). Desktop-prefixed tool paths resolve to the approved Desktop root; traversal paths remain rejected. The tests do not create files on the founder's real Desktop.
 
+PC-wide access now provides a separately confirmed session scope across Windows drives, with drive discovery, absolute paths, known-folder aliases and per-change approval. Backups are stored beside edited files. Protected system/application writes, credential paths, links and UNC/device paths stay blocked. Disconnect revokes the scope. Unit tests cover absolute-path creation, edits, backups, recycling, declined requests and protected files outside the initial folder. The desktop UI test verifies scope denial/approval, full destination review, outside-home file creation and revocation. Privacy Policy 1.4 and consent revision 5 describe this scope.
+
+A live Qwen3 Instruct PC-wide task created PCWelcome.txt at an absolute E: path outside its initial Home fixture, with exact content verified on disk (2,343 reported tokens). The test only authorized changes inside its temporary fixture. PC-wide access changes the file-tool scope, not Windows privileges; approved npm scripts retain the broader execution rights described in their command review.
+
 Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The founder subsequently authorized publishing this Beta while a real clean-Windows software installation test remains outstanding.
 
 ## Local AI usage windows

@@ -70,6 +70,45 @@ test('npm checks require a reviewed stable manifest and return real exit status'
   } finally { assert.equal(path.dirname(root), base); await fs.rm(root, { recursive: true, force: true }) }
 })
 
+test('PC-wide mode works outside the initial folder and retains protected-write and review checks', { skip: process.platform !== 'win32' }, async () => {
+  const base = path.resolve(__dirname, '..')
+  const container = await fs.mkdtemp(path.join(base, '.pc-agent-'))
+  const home = path.join(container, 'home')
+  const other = path.join(container, 'other')
+  const protectedFolder = path.join(container, 'protected')
+  await Promise.all([home, other, protectedFolder].map(folder => fs.mkdir(folder)))
+  const reviews = []
+  let allow = true
+  const execute = createWorkspace(home, { pcWide: true, knownFolders: { desktop: other }, protectedWrites: [protectedFolder], signal: new AbortController().signal,
+    approve: async item => { reviews.push(item); return allow }, trash: file => fs.rename(file, path.join(container, 'recycled.txt')) })
+  try {
+    const file = path.join(other, 'Welcome.txt')
+    const created = await execute('write_file', { path: 'Desktop/Welcome.txt', content: 'Welcome to LoneX' })
+    assert.equal(created.path, file)
+    assert.equal(reviews[0].path, file)
+    assert.equal(await fs.readFile(file, 'utf8'), 'Welcome to LoneX')
+    const edit = await execute('write_file', { path: file, content: 'Edited across folders' })
+    assert.equal(path.isAbsolute(edit.backup), true)
+    assert.equal(await fs.readFile(edit.backup, 'utf8'), 'Welcome to LoneX')
+    const listing = await execute('list_files', { path: other })
+    assert.ok(listing.entries.some(item => item.name === 'Welcome.txt'))
+    await execute('create_directory', { path: path.join(other, 'new-folder') })
+    for (const input of ['relative.txt', 'Desktop/../escape.txt', '\\\\server\\share\\file.txt', '\\\\?\\C:\\escape.txt', file + ':stream', path.join(other, '.env')]) {
+      await assert.rejects(execute('write_file', { path: input, content: 'bad' }))
+    }
+    await fs.writeFile(path.join(protectedFolder, 'system.txt'), 'protected fixture')
+    assert.equal((await execute('read_file', { path: path.join(protectedFolder, 'system.txt') })).content, 'protected fixture')
+    await assert.rejects(execute('write_file', { path: path.join(protectedFolder, 'system.txt'), content: 'bad' }), /protected/)
+    allow = false
+    await assert.rejects(execute('write_file', { path: path.join(other, 'declined.txt'), content: 'bad' }), /declined/)
+    allow = true
+    await execute('recycle_file', { path: file })
+    assert.equal(await fs.readFile(path.join(container, 'recycled.txt'), 'utf8'), 'Edited across folders')
+    const narrow = createWorkspace(home, { signal: new AbortController().signal, approve: async () => true })
+    await assert.rejects(narrow('read_file', { path: file }), /relative/)
+  } finally { assert.equal(path.dirname(container), base); await fs.rm(container, { recursive: true, force: true }) }
+})
+
 test('agent loop dispatches only tools and shares token windows across requests', async () => {
   const db = new DatabaseSync(':memory:')
   const log = []

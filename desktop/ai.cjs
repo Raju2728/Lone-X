@@ -226,6 +226,7 @@ function registerAI(app, rendererPath, requireAccount) {
   let active
   const agentFolders = new WeakMap()
   const desktopAgents = new WeakSet()
+  const pcAgents = new WeakSet()
   let agentReview
   let dictation
   app.once('before-quit', () => dictation?.abort())
@@ -301,10 +302,19 @@ function registerAI(app, rendererPath, requireAccount) {
   handle('agent-folder', async (event, target) => {
     if (active) throw new Error('Finish the current response before changing the agent folder.')
     let selectedPath
-    if (target === 'desktop') {
+    if (target === 'pc') {
+      if (pcAgents.has(event.sender)) return agentFolders.get(event.sender)
+      const choice = await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender), {
+        type: 'warning', buttons: ['Cancel', 'Allow PC-wide access'], defaultId: 0, cancelId: 0,
+        message: 'Allow Chat agent access across this PC for this session?',
+        detail: 'The agent can discover drives and list/read supported text files using full Windows paths. File creation, edits, recycling and project commands still require your review. File tools exclude credential paths and block direct changes to critical Windows/Lone X directories. Approved project scripts run with your Windows permissions and may access other locations. Disconnect in Chat to revoke this access. No administrator elevation is granted.'
+      })
+      if (choice.response !== 1 || event.sender.isDestroyed()) return null
+      selectedPath = app.getPath('home')
+    } else if (target === 'desktop') {
       selectedPath = app.getPath('desktop')
       const existing = await realpath(selectedPath)
-      if (agentFolders.get(event.sender) === existing) { desktopAgents.add(event.sender); return existing }
+      if (agentFolders.get(event.sender) === existing && !pcAgents.has(event.sender)) { desktopAgents.add(event.sender); return existing }
       const choice = await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender), {
         type: 'question', buttons: ['Cancel', 'Allow Desktop workspace'], defaultId: 0, cancelId: 0,
         message: 'Allow the Chat agent to work in your Windows Desktop folder?',
@@ -320,13 +330,15 @@ function registerAI(app, rendererPath, requireAccount) {
     if (active) throw new Error('Finish the current response before changing the agent folder.')
     const root = await realpath(selectedPath)
     const protectedRoots = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, app.getPath('appData'), app.getPath('userData'), path.dirname(process.execPath)].filter(Boolean)
-    if (root === path.parse(root).root || root.toLowerCase() === app.getPath('home').toLowerCase() || protectedRoots.some(base => {
+    if (target !== 'pc' && (root === path.parse(root).root || root.toLowerCase() === app.getPath('home').toLowerCase() || protectedRoots.some(base => {
       const relative = path.relative(base, root)
       return !relative || (!relative.startsWith('..') && !path.isAbsolute(relative))
-    }) || root.split(/[\\/]/).some(part => ['.ssh', '.aws', '.codex', '.gnupg', '.azure', '.kube', '.git', 'node_modules'].includes(part.toLowerCase()))) throw new Error('Choose a project folder outside system, application and credential directories.')
+    }) || root.split(/[\\/]/).some(part => ['.ssh', '.aws', '.codex', '.gnupg', '.azure', '.kube', '.git', 'node_modules'].includes(part.toLowerCase())))) throw new Error('Choose a project folder outside system, application and credential directories.')
     agentFolders.set(event.sender, root)
     if (target === 'desktop') desktopAgents.add(event.sender)
     else desktopAgents.delete(event.sender)
+    if (target === 'pc') pcAgents.add(event.sender)
+    else pcAgents.delete(event.sender)
     return root
   })
   handle('agent-review', (event, input) => {
@@ -337,6 +349,7 @@ function registerAI(app, rendererPath, requireAccount) {
     if (active) throw new Error('Stop the current response before disconnecting the folder.')
     agentFolders.delete(event.sender)
     desktopAgents.delete(event.sender)
+    pcAgents.delete(event.sender)
   })
   async function approveAgent(sender, details, signal) {
     signal.throwIfAborted()
@@ -457,8 +470,11 @@ function registerAI(app, rendererPath, requireAccount) {
       const endpoint = await runtime()
       signal.throwIfAborted()
       const desktop = desktopAgents.has(event.sender)
-      const execute = agent ? createWorkspace(agentRoot, { signal, desktop, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
-      let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta, workspace: agentRoot, desktop })
+      const pcWide = pcAgents.has(event.sender)
+      const knownFolders = pcWide ? Object.fromEntries(await Promise.all(['desktop', 'documents', 'downloads', 'home'].map(async key => [key, await realpath(app.getPath(key)).catch(() => app.getPath(key))]))) : {}
+      const protectedWrites = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, app.getPath('userData'), path.dirname(process.execPath)].filter(Boolean).map(value => path.resolve(value))
+      const execute = agent ? createWorkspace(agentRoot, { signal, desktop, pcWide, knownFolders, protectedWrites, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
+      let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta, workspace: agentRoot, desktop, pcWide, knownFolders })
         : await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
       controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')

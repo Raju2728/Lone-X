@@ -19,6 +19,7 @@ let corruptResource = false
 const installedModelNames = new Set(['smoke-model'])
 let pullMode = 'success'
 let pullRequests = 0
+let pcFixturePath
 let registeredResource
 const resourceServer = createResourceApi({
   readToken: readerToken, adminToken,
@@ -87,9 +88,10 @@ global.fetch = (url, options) => {
     if (payload.tools) {
       assert.equal(payload.model, 'qwen3:4b-instruct')
       const desktopTask = payload.messages.some(message => message.role === 'user' && message.content.includes('Welcome to LoneX'))
+      const pcTask = payload.tools.some(item => item.function.name === 'list_drives')
       return Promise.resolve(Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: payload.messages.at(-1).role === 'tool'
-        ? { role: 'assistant', content: desktopTask ? 'Created Welcome.txt after approval.' : 'Created hello.txt after approval.' }
-        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: desktopTask ? 'Welcome.txt' : 'hello.txt', content: desktopTask ? 'Welcome to LoneX' : 'Hello from the agent' } } }] } }))
+        ? { role: 'assistant', content: pcTask ? 'Created PC-wide fixture after approval.' : desktopTask ? 'Created Welcome.txt after approval.' : 'Created hello.txt after approval.' }
+        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: pcTask ? pcFixturePath : desktopTask ? 'Welcome.txt' : 'hello.txt', content: pcTask ? 'PC-wide fixture' : desktopTask ? 'Welcome to LoneX' : 'Hello from the agent' } } }] } }))
     }
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
@@ -1003,6 +1005,37 @@ async function runSmoke() {
     assert.equal(desktopResult.agentOn, 'true')
     assert.equal(desktopApprovals, 1)
     assert.equal(storageFs.readFileSync(storagePath.join(desktopFolder, 'Welcome.txt'), 'utf8'), 'Welcome to LoneX')
+    dialog.showMessageBox = async () => ({ response: 0 })
+    assert.equal(await window.webContents.executeJavaScript("window.loneXAI.chooseAgentFolder('pc')"), null)
+    let pcApprovals = 0
+    dialog.showMessageBox = async (_parent, options) => { assert.match(options.message, /across this PC/); pcApprovals++; return { response: 1 } }
+    pcFixturePath = storagePath.join(agentFolder, 'outside-home.txt')
+    const pcResult = await window.webContents.executeJavaScript(`(async () => {
+      const workspace = document.querySelector('.ai-console')
+      const waitFor = async test => { for(let i=0;i<100;i++) { if(test()) return; await new Promise(resolve=>setTimeout(resolve,20)) } throw new Error('PC-wide action did not complete') }
+      const pcButton = [...workspace.querySelectorAll('button')].find(button=>button.textContent==='PC-wide access')
+      pcButton.click()
+      await waitFor(()=>pcButton.getAttribute('aria-pressed')==='true')
+      const draft = workspace.querySelector('textarea')
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(draft), 'value').set.call(draft, 'Create the PC-wide fixture outside my home folder')
+      draft.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitFor(()=>!workspace.querySelector('button[aria-label="Send"]').disabled)
+      workspace.querySelector('button[aria-label="Send"]').click()
+      await waitFor(()=>!!workspace.querySelector('[aria-label="Review agent action"]'))
+      const review = workspace.querySelector('[aria-label="Review agent action"]')
+      if(!review.textContent.includes('outside-home.txt')) throw new Error('Absolute destination not shown for review')
+      const approve = [...review.querySelectorAll('button')].find(button=>button.textContent==='Approve create')
+      approve.click()
+      await waitFor(()=>draft.value==='' && workspace.textContent.includes('Created PC-wide fixture'))
+      const disconnect = [...workspace.querySelectorAll('button')].find(button=>button.textContent==='Disconnect')
+      disconnect.click()
+      await waitFor(()=>pcButton.getAttribute('aria-pressed')==='false')
+      return { completed: true }
+    })().catch(error=>({failure:error.message}))`)
+    assert.equal(pcResult.failure, undefined, pcResult.failure)
+    assert.equal(pcApprovals, 1)
+    assert.equal(storageFs.readFileSync(pcFixturePath, 'utf8'), 'PC-wide fixture')
+    await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({ model: 'qwen3:4b-instruct', text: 'Blocked after disconnect', chatId: 'pc-fixture', agent: true })"), /choose an agent folder/)
   } finally {
     dialog.showOpenDialog = agentPicker
     dialog.showMessageBox = agentConfirm

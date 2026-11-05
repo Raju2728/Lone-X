@@ -90,6 +90,20 @@ unless Windows permissions on the chosen extraction folder require it.
 
 CHAT AGENT
 
+PC-WIDE ACCESS
+In Chat, click PC-wide access and review the Windows confirmation. This
+enables supported file tools across accessible Windows drives for the app
+session. Use full paths, for example E:\Documents\Welcome.txt, or name
+Desktop/Documents/Downloads. Agent mode and Qwen3 Instruct are selected.
+Each file creation, edit, recycling request or project command still needs
+your approval. The review shows the full destination path. Edits keep a
+.lone-x-backups folder beside the affected file. Disconnect revokes access.
+File tools block credential paths, linked paths, UNC/device paths and changes
+to protected Windows/Lone X directories. Normal Windows permissions apply;
+the app does not request administrator elevation. The 16 KB text-file and
+per-turn action limits still apply. PC-wide is an access scope, not an
+unrestricted shell or permanent background permission.
+
 In Chat, click Choose agent folder and select a separate project folder.
 Use Desktop selects your actual Windows Desktop after an access confirmation.
 Direct prompts such as Create a new text file in Desktop and write

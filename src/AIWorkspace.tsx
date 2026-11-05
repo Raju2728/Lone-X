@@ -18,7 +18,7 @@ type AgentReview = { id: string; kind: string; path: string; before: string; aft
 declare global {
   interface Window {
     loneXAI: {
-      chooseAgentFolder: (target?: 'desktop') => Promise<string | null>
+      chooseAgentFolder: (target?: 'desktop' | 'pc') => Promise<string | null>
       disconnectAgent: () => Promise<void>
       reviewAgent: (input: { id: string; accept: boolean }) => Promise<void>
       onAgentReview: (callback: (review: AgentReview | null) => void) => () => void
@@ -46,6 +46,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   const [model, setModel] = useState(defaultModel)
   const [agent, setAgent] = useState(false)
   const [agentFolder, setAgentFolder] = useState('')
+  const [pcWide, setPcWide] = useState(false)
   const [review, setReview] = useState<AgentReview | null>(null)
   const [choosingFolder, setChoosingFolder] = useState(false)
   const [installedModels, setInstalledModels] = useState<string[]>([])
@@ -70,11 +71,11 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
 
   useEffect(() => api.onAgentReview(setReview), [api])
 
-  async function chooseAgentFolder(target?: 'desktop') {
+  async function chooseAgentFolder(target?: 'desktop' | 'pc') {
     setChoosingFolder(true); setError('')
     try {
       const folder = await api.chooseAgentFolder(target)
-      if (folder) { setAgentFolder(folder); setAgent(true); setModel('qwen3:4b-instruct') }
+      if (folder) { setAgentFolder(folder); setPcWide(target === 'pc'); setAgent(true); setModel('qwen3:4b-instruct') }
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not choose agent folder.') }
     finally { setChoosingFolder(false) }
   }
@@ -203,12 +204,12 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     if (deleting || installing || !ready || (!text && !detail.attachments.length) || needsModel || pending) return false
     let sendAgent = agent
     let sendModel = model
-    if (/^(?:please\s+)?(?:create|make|write|edit|read|delete|remove)\b/i.test(text) && /\bdesktop\b/i.test(text) && /\b(?:file|folder|directory|document)\b/i.test(text)) {
+    if (!pcWide && /^(?:please\s+)?(?:create|make|write|edit|read|delete|remove)\b/i.test(text) && /\bdesktop\b/i.test(text) && /\b(?:file|folder|directory|document)\b/i.test(text)) {
       setChoosingFolder(true)
       try {
         const folder = await api.chooseAgentFolder('desktop')
         if (!folder) return false
-        setAgentFolder(folder); setAgent(true); setModel('qwen3:4b-instruct')
+        setAgentFolder(folder); setPcWide(false); setAgent(true); setModel('qwen3:4b-instruct')
         sendAgent = true; sendModel = 'qwen3:4b-instruct'
         const available = await api.models()
         setInstalledModels(available)
@@ -258,8 +259,9 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
         <button className="provider-button" aria-pressed={agent} disabled={!!pending || installing || choosingFolder} onClick={() => { setAgent(value => !value); if (!agent) setModel('qwen3:4b-instruct') }}>Agent {agent ? 'on' : 'off'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder()}>{choosingFolder ? 'Choosing…' : agentFolder ? 'Change folder' : 'Choose agent folder'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder('desktop')}>Use Desktop</button>
-        {agentFolder && <span className="agent-folder" title={agentFolder}>{agentFolder}</span>}
-        {agentFolder && <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void api.disconnectAgent().then(() => { setAgentFolder(''); setAgent(false) }).catch(() => setError('Could not disconnect the folder.'))}>Disconnect</button>}
+        <button className="provider-button" aria-pressed={pcWide} disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder('pc')}>PC-wide access</button>
+        {agentFolder && <span className="agent-folder" title={pcWide ? 'All accessible Windows drives · changes require approval' : agentFolder}>{pcWide ? 'PC-wide · review required' : agentFolder}</span>}
+        {agentFolder && <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void api.disconnectAgent().then(() => { setAgentFolder(''); setAgent(false); setPcWide(false) }).catch(() => setError('Could not disconnect the folder.'))}>Disconnect</button>}
       </div>
     </div>
 

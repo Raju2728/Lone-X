@@ -10,6 +10,7 @@ const { agentModel, createWorkspace, runAgent } = require('./chat-agent.cjs')
 const { localRuntime } = require('./ollama-runtime.cjs')
 const { checkUpdate, versionLabel } = require('./update.cjs')
 const { tokenLimits } = require('./token-limits.cjs')
+const { languageInstruction } = require('./language.cjs')
 
 const retentionMs = 30 * 24 * 60 * 60 * 1000
 const ollama = 'http://127.0.0.1:11434'
@@ -475,7 +476,7 @@ function registerAI(app, rendererPath, requireAccount) {
       const protectedWrites = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, app.getPath('userData'), path.dirname(process.execPath)].filter(Boolean).map(value => path.resolve(value))
       const execute = agent ? createWorkspace(agentRoot, { signal, desktop, pcWide, knownFolders, protectedWrites, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
       let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta, workspace: agentRoot, desktop, pcWide, knownFolders })
-        : await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
+        : await streamReply(model, [{ role: 'system', content: 'You are Raju, the Lone X local AI assistant. This turn is in regular chat mode without PC action tools. For requested PC actions, explain how to enable Agent mode and grant folder or PC-wide access. ' + languageInstruction(text) }, ...messages], onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
       controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')
       let title = existingTitle.get(id)?.chat_title

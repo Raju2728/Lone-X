@@ -3,6 +3,7 @@ import { Cpu, Ellipsis, FileText, MessageSquare, Plus, Radio, Trash2, UserRound 
 import LatticeLoader from './react-bits/LatticeLoader'
 import PromptBar, { type PromptBarSendDetail } from './react-bits/PromptBar'
 import ResponseText from './ResponseText'
+import { isDesktopFileRequest } from './promptRouting'
 import type { Usage } from './OverviewActivity'
 import { chatModels, defaultModel, type ModelInventoryItem, type ModelProgress } from './modelCatalog'
 
@@ -204,7 +205,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     if (deleting || installing || !ready || (!text && !detail.attachments.length) || needsModel || pending) return false
     let sendAgent = agent
     let sendModel = model
-    if (!pcWide && /^(?:please\s+)?(?:create|make|write|edit|read|delete|remove)\b/i.test(text) && /\bdesktop\b/i.test(text) && /\b(?:file|folder|directory|document)\b/i.test(text)) {
+    if (!pcWide && isDesktopFileRequest(text)) {
       setChoosingFolder(true)
       try {
         const folder = await api.chooseAgentFolder('desktop')
@@ -254,7 +255,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
 
   return <section className="ai-console" aria-label="AI conversation">
     <div className="ai-console-bar">
-      <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · Ollama on this PC</small></div></div>
+      <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · English &amp; Thanglish · Local Ollama</small></div></div>
       <div className="agent-controls">
         <button className="provider-button" aria-pressed={agent} disabled={!!pending || installing || choosingFolder} onClick={() => { setAgent(value => !value); if (!agent) setModel('qwen3:4b-instruct') }}>Agent {agent ? 'on' : 'off'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder()}>{choosingFolder ? 'Choosing…' : agentFolder ? 'Change folder' : 'Choose agent folder'}</button>

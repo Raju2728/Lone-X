@@ -13,6 +13,9 @@ try {
         $bundle = New-Item -ItemType Directory (Join-Path $stage.FullName 'Lone X')
         Get-ChildItem -LiteralPath $runtime | Copy-Item -Destination $bundle.FullName -Recurse
         Rename-Item -LiteralPath (Join-Path $bundle.FullName 'electron.exe') -NewName 'Lone X.exe'
+        node (Join-Path $PSScriptRoot 'brand-windows.mjs') (Join-Path $runtime 'electron.exe') (Join-Path $bundle.FullName 'Lone X.exe') (Join-Path (Get-Location) 'public/logo.ico')
+        if ($LASTEXITCODE -ne 0) { throw 'Application icon embedding failed.' }
+        Copy-Item -LiteralPath 'public/logo.ico' -Destination (Join-Path $bundle.FullName 'Lone-X.ico')
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Windows-Setup.txt') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.ps1') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.cmd') -Destination $bundle.FullName
@@ -21,7 +24,7 @@ try {
         $dependencies = New-Item -ItemType Directory (Join-Path $app.FullName 'node_modules')
         Copy-Item node_modules/nodemailer -Destination $dependencies.FullName -Recurse
         $revision = git -c "safe.directory=$((Get-Location).Path.Replace('\', '/'))" rev-parse HEAD
-        $dirty = git -c "safe.directory=$((Get-Location).Path.Replace('\', '/'))" status --porcelain -- desktop src scripts package.json package-lock.json
+        $dirty = git -c "safe.directory=$((Get-Location).Path.Replace('\', '/'))" status --porcelain -- desktop src scripts public/logo.ico public/logo.png package.json package-lock.json
         if ($LASTEXITCODE -eq 0 -and !$dirty -and $revision -match '^[a-f0-9]{40}$') {
             @{ revision = $revision } | ConvertTo-Json -Compress | Set-Content -Encoding ascii (Join-Path $app.FullName 'build-info.json')
         }
@@ -29,6 +32,7 @@ try {
         Get-ChildItem dist | Where-Object Name -ne 'downloads' | Copy-Item -Destination $web.FullName -Recurse
         $assets = New-Item -ItemType Directory (Join-Path $app.FullName 'public')
         Copy-Item public/logo.png -Destination $assets.FullName
+        Copy-Item public/logo.ico -Destination $assets.FullName
         '{"name":"lone-x","productName":"Lone X","main":"desktop/main.cjs"}' | Set-Content -Encoding ascii (Join-Path $app.FullName 'package.json')
 
         $ollamaSource = if ($env:LONEX_OLLAMA_RUNTIME_DIR) { $env:LONEX_OLLAMA_RUNTIME_DIR } else { Join-Path $env:LOCALAPPDATA 'Programs/Ollama' }

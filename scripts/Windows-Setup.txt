@@ -125,3 +125,18 @@ dependency installs. Scripts run with your Windows permissions and can
 access files/network beyond the folder, so inspect the command review.
 Stop cancels further work; already approved changes remain and are reported.
 Model performance and accuracy vary by PC. Verify generated code and tests.
+
+THANGLISH
+
+You can type Tamil using English letters. Raju is instructed to reply in
+Thanglish when you use it, while keeping filenames, paths, code and quoted
+file contents unchanged. Qwen3 4B Instruct is recommended for these prompts;
+language quality varies across local models. Permissions and reviews apply.
+Example: Desktop la oru text file create panni "Vanakkam LoneX" nu ezhuthu.
+Use Reply in English if you want to switch the response back to English.
+
+APPLICATION ICON
+
+Lone X.exe contains the supplied Lone X logo as its Windows icon. The ZIP
+also includes Lone-X.ico for use with custom Windows shortcuts. The same
+logo is used for the app window and taskbar identity.

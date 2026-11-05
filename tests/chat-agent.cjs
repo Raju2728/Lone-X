@@ -126,7 +126,7 @@ test('agent loop dispatches only tools and shares token windows across requests'
         requests++
         if (requests === 2) assert.equal(body.messages.at(-1).role, 'tool')
         return Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: requests === 1
-          ? { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: 'hello.txt', content: 'Hello' } } }] }
+          ? { role: 'assistant', content: 'Unverified premature success claim', tool_calls: [{ function: { name: 'write_file', arguments: { path: 'hello.txt', content: 'Hello' } } }] }
           : { role: 'assistant', content: 'Created hello.txt.' } })
       }
     })
@@ -134,6 +134,7 @@ test('agent loop dispatches only tools and shares token windows across requests'
     assert.equal(executed, 1)
     assert.equal(tokenLimits(db).status()[0].used, 30)
     assert.match(log.join(''), /File created/)
+    assert.doesNotMatch(log.join(''), /Unverified premature success claim/)
   } finally { db.close() }
 })
 

@@ -9,7 +9,8 @@ async function main() {
   const pcCase = process.env.LONEX_AGENT_LIVE_CASE === 'pc'
   const base = path.resolve(__dirname, pcCase ? '..' : '../node_modules')
   const root = await fs.mkdtemp(path.join(base, '.agent-live-'))
-  const desktopCase = process.env.LONEX_AGENT_LIVE_CASE === 'desktop'
+  const thanglishCase = process.env.LONEX_AGENT_LIVE_CASE === 'thanglish'
+  const desktopCase = process.env.LONEX_AGENT_LIVE_CASE === 'desktop' || thanglishCase
   const workspace = pcCase ? path.join(root, 'Home') : desktopCase ? path.join(root, 'Desktop') : root
   if (desktopCase || pcCase) await fs.mkdir(workspace)
   const outside = path.join(root, 'OtherLocation')
@@ -20,7 +21,7 @@ async function main() {
   const signal = AbortSignal.timeout(5 * 60 * 1000)
   try {
     let createdFile = 'hello.txt'
-    const expected = pcCase ? 'Welcome to LoneX PC' : desktopCase ? 'Welcome to LoneX' : 'Hello from Lone X'
+    const expected = pcCase ? 'Welcome to LoneX PC' : thanglishCase ? 'Vanakkam LoneX' : desktopCase ? 'Welcome to LoneX' : 'Hello from Lone X'
     const fileTools = createWorkspace(workspace, { signal, pcWide: pcCase, knownFolders, desktop: desktopCase, approve: async review => {
       const accepted = review.kind === 'create' && (pcCase ? review.path === pcDestination : desktopCase ? /^[\w -]+\.txt$/i.test(review.path) : review.path === 'hello.txt') && review.after.trim() === expected
       if (accepted) createdFile = review.path
@@ -36,7 +37,7 @@ async function main() {
       }
       return fileTools(name, args)
     }
-    const prompt = pcCase ? 'Create a text file at ' + JSON.stringify(pcDestination) + ' containing exactly "Welcome to LoneX PC". Use the provided tools to create the file.' : desktopCase ? 'Create A New text file in Desktop and write "Welcome to LoneX" in it.' : 'Create hello.txt containing exactly Hello from Lone X. Read the file back to verify the content and report the result. Use the file tools, not code blocks.'
+    const prompt = pcCase ? 'Create a text file at ' + JSON.stringify(pcDestination) + ' containing exactly "Welcome to LoneX PC". Use the provided tools to create the file.' : thanglishCase ? 'Desktop la WelcomeThanglish.txt nu oru text file create panni, adhula "Vanakkam LoneX" nu ezhuthu. Mudichadhum Thanglish la sollu.' : desktopCase ? 'Create A New text file in Desktop and write "Welcome to LoneX" in it.' : 'Create hello.txt containing exactly Hello from Lone X. Read the file back to verify the content and report the result. Use the file tools, not code blocks.'
     const tokens = await runAgent({ messages: [{ role: 'user', content: prompt }],
       endpoint: 'http://127.0.0.1:11434', signal, budget: tokenLimits(db), execute, workspace, desktop: desktopCase, pcWide: pcCase, knownFolders,
       onDelta: text => process.stdout.write(text)

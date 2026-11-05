@@ -88,16 +88,18 @@ global.fetch = (url, options) => {
     if (payload.tools) {
       assert.equal(payload.model, 'qwen3:4b-instruct')
       const desktopTask = payload.messages.some(message => message.role === 'user' && message.content.includes('Welcome to LoneX'))
+      const thanglishTask = payload.messages.some(message => message.role === 'user' && message.content.includes('Vanakkam LoneX'))
       const pcTask = payload.tools.some(item => item.function.name === 'list_drives')
       return Promise.resolve(Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: payload.messages.at(-1).role === 'tool'
-        ? { role: 'assistant', content: pcTask ? 'Created PC-wide fixture after approval.' : desktopTask ? 'Created Welcome.txt after approval.' : 'Created hello.txt after approval.' }
-        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: pcTask ? pcFixturePath : desktopTask ? 'Welcome.txt' : 'hello.txt', content: pcTask ? 'PC-wide fixture' : desktopTask ? 'Welcome to LoneX' : 'Hello from the agent' } } }] } }))
+        ? { role: 'assistant', content: pcTask ? 'Created PC-wide fixture after approval.' : thanglishTask ? 'Thanglish.txt create panniten.' : desktopTask ? 'Created Welcome.txt after approval.' : 'Created hello.txt after approval.' }
+        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: pcTask ? pcFixturePath : thanglishTask ? 'Thanglish.txt' : desktopTask ? 'Welcome.txt' : 'hello.txt', content: pcTask ? 'PC-wide fixture' : thanglishTask ? 'Vanakkam LoneX' : desktopTask ? 'Welcome to LoneX' : 'Hello from the agent' } } }] } }))
     }
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
     }
     if (payload.model === 'gemma3:1b') {
-      assert.deepEqual(payload.messages, [{ role: 'user', content: 'Local Gemma test' }])
+      assert.match(payload.messages[0].content, /Thanglish/)
+      assert.deepEqual(payload.messages.at(-1), { role: 'user', content: 'Local Gemma test' })
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Gemma reply' }, done: true, prompt_eval_count: 7, eval_count: 3 })))
     }
     if (payload.format) {
@@ -1005,6 +1007,28 @@ async function runSmoke() {
     assert.equal(desktopResult.agentOn, 'true')
     assert.equal(desktopApprovals, 1)
     assert.equal(storageFs.readFileSync(storagePath.join(desktopFolder, 'Welcome.txt'), 'utf8'), 'Welcome to LoneX')
+    const thanglishResult = await window.webContents.executeJavaScript(`(async () => {
+      const workspace = document.querySelector('.ai-console')
+      const waitFor = async test => { for(let i=0;i<100;i++) { if(test())return; await new Promise(resolve=>setTimeout(resolve,20)) } throw new Error('Thanglish prompt did not complete') }
+      const disconnect = [...workspace.querySelectorAll('button')].find(button=>button.textContent==='Disconnect')
+      disconnect.click()
+      await waitFor(()=>workspace.querySelector('.agent-controls button[aria-pressed]')?.getAttribute('aria-pressed')==='false')
+      const draft = workspace.querySelector('textarea')
+      Object.getOwnPropertyDescriptor(Object.getPrototypeOf(draft), 'value').set.call(draft, 'Desktop la oru text file create panni "Vanakkam LoneX" nu ezhuthu.')
+      draft.dispatchEvent(new Event('input', { bubbles: true }))
+      await waitFor(()=>!workspace.querySelector('button[aria-label="Send"]').disabled)
+      workspace.querySelector('button[aria-label="Send"]').click()
+      await waitFor(()=>!!workspace.querySelector('[aria-label="Review agent action"]'))
+      const review = workspace.querySelector('[aria-label="Review agent action"]')
+      if(!review.textContent.includes('Vanakkam LoneX'))throw new Error('Quoted Thanglish text was changed')
+      const approve = [...review.querySelectorAll('button')].find(button=>button.textContent==='Approve create')
+      approve.click()
+      await waitFor(()=>draft.value==='' && workspace.textContent.includes('create panniten'))
+      return { completed: true }
+    })().catch(error=>({failure:error.message}))`)
+    assert.equal(thanglishResult.failure, undefined, thanglishResult.failure)
+    assert.equal(desktopApprovals, 2)
+    assert.equal(storageFs.readFileSync(storagePath.join(desktopFolder, 'Thanglish.txt'), 'utf8'), 'Vanakkam LoneX')
     dialog.showMessageBox = async () => ({ response: 0 })
     assert.equal(await window.webContents.executeJavaScript("window.loneXAI.chooseAgentFolder('pc')"), null)
     let pcApprovals = 0

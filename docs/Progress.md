@@ -110,6 +110,10 @@ PC-wide access now provides a separately confirmed session scope across Windows 
 
 A live Qwen3 Instruct PC-wide task created PCWelcome.txt at an absolute E: path outside its initial Home fixture, with exact content verified on disk (2,343 reported tokens). The test only authorized changes inside its temporary fixture. PC-wide access changes the file-tool scope, not Windows privileges; approved npm scripts retain the broader execution rights described in their command review.
 
+The Windows packager now embeds a seven-size Lone X logo icon in the executable and includes Lone-X.ico for shortcuts, with the same ICO used for the app window and a stable Windows app identity. The build-only resedit library updates executable resources; tests verify the exact image bytes in every icon resource and launch a sandboxed renderer from the branded executable with its packaged runtime layout.
+
+Regular Chat and Agent prompts share Thanglish guidance with per-turn language preference, preservation of quoted values/paths/code and an explicit English override. Thanglish Desktop commands use the same native scope and change-review flow. A live Qwen3 Instruct request created WelcomeThanglish.txt with exact Vanakkam LoneX content and a Thanglish response (2,495 tokens). Smaller models may have weaker language quality. Pre-tool model narration is withheld so it cannot announce success before the tool outcome is known.
+
 Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The founder subsequently authorized publishing this Beta while a real clean-Windows software installation test remains outstanding.
 
 ## Local AI usage windows

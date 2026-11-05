@@ -11,6 +11,7 @@ const { registerBrowser } = require('./browser.cjs')
 const { registerStorage } = require('./storage.cjs')
 const { registerLegal } = require('./legal.cjs')
 const rendererPath = path.join(__dirname, '../dist/index.html')
+if (process.platform === 'win32') app.setAppUserModelId('LoneX.Desktop')
 
 function createWindow() {
   const window = new BrowserWindow({
@@ -21,7 +22,7 @@ function createWindow() {
     minWidth: 760,
     minHeight: 560,
     backgroundColor: '#000000',
-    icon: path.join(__dirname, '../public/logo.png'),
+    icon: path.join(__dirname, '../public/logo.ico'),
     webPreferences: { devTools: false, sandbox: true, contextIsolation: true, nodeIntegration: false, preload: path.join(__dirname, 'preload.cjs') }
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))

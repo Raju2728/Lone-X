@@ -57,7 +57,7 @@ global.fetch = (url, options) => {
   if (url === 'http://127.0.0.1:11434/api/pull') {
     pullRequests++
     const { model, stream } = JSON.parse(options.body)
-    assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b'].includes(model))
+    assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].includes(model))
     assert.equal(stream, true)
     const encoder = new TextEncoder()
     return Promise.resolve(new Response(new ReadableStream({
@@ -84,6 +84,12 @@ global.fetch = (url, options) => {
   }
   if (url === 'http://127.0.0.1:11434/api/chat') {
     const payload = JSON.parse(options.body)
+    if (payload.tools) {
+      assert.equal(payload.model, 'qwen3:4b-instruct')
+      return Promise.resolve(Response.json({ done: true, prompt_eval_count: 10, eval_count: 5, message: payload.messages.at(-1).role === 'tool'
+        ? { role: 'assistant', content: 'Created hello.txt after approval.' }
+        : { role: 'assistant', content: '', tool_calls: [{ function: { name: 'write_file', arguments: { path: 'hello.txt', content: 'Hello from the agent' } } }] } }))
+    }
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
     }
@@ -152,6 +158,7 @@ const realExecFile = subprocess.execFile
 let stopRunningCommand
 let runningChild
 let gitInstalled = false
+let sevenZipInstalled = false
 let softwareInstalls = 0
 let softwareInstallFailure = false
 let launchedApps = 0
@@ -164,9 +171,10 @@ shell.openPath = async filename => {
 subprocess.execFile = (binary, args, options, callback) => {
   if (binary.toLowerCase().endsWith('winget.exe')) {
     if (args[0] === 'install') {
-      assert.deepEqual(args, ['install', '--id', 'Git.Git', '--exact', '--source', 'winget', '--interactive', '--disable-interactivity', '--no-upgrade'])
-      softwareInstalls++
-      gitInstalled = !softwareInstallFailure
+      assert.ok(['Git.Git', '7zip.7zip'].includes(args[2]))
+      assert.deepEqual(args, ['install', '--id', args[2], '--exact', '--source', 'winget', '--interactive', '--disable-interactivity', '--no-upgrade'])
+      if (args[2] === '7zip.7zip') sevenZipInstalled = !softwareInstallFailure
+      else { softwareInstalls++; gitInstalled = !softwareInstallFailure }
     }
     const failed = args[0] === 'install' && softwareInstallFailure
     queueMicrotask(() => callback(failed ? Object.assign(new Error('Fixture installer cancelled'), { code: 1 }) : null,
@@ -177,6 +185,11 @@ subprocess.execFile = (binary, args, options, callback) => {
     queueMicrotask(() => callback(gitInstalled ? null : Object.assign(new Error('Missing tool'), { code: 'ENOENT' }), gitInstalled ? 'git version 2.52.0' : '', ''))
     return
   }
+  if (binary.replaceAll('\\', '/').toLowerCase().endsWith('/7-zip/7z.exe')) {
+    assert.deepEqual(args, ['i'])
+    queueMicrotask(() => callback(sevenZipInstalled ? null : Object.assign(new Error('Missing tool'), { code: 'ENOENT' }), sevenZipInstalled ? '7-Zip fixture' : '', ''))
+    return
+  }
   if (!args.at(-1)?.includes('Win32_OperatingSystem')) return realExecFile(binary, args, options, callback)
   runningChild = realExecFile(binary, [...args.slice(0, -1), 'Start-Sleep -Seconds 30'], options, callback)
   runningChild.once('spawn', () => { void stopRunningCommand() })
@@ -185,7 +198,7 @@ subprocess.execFile = (binary, args, options, callback) => {
 setTimeout(() => {
   console.error('Desktop smoke test timed out.')
   app.exit(1)
-}, 15000).unref()
+}, 25000).unref()
 
 async function runSmoke() {
   resourceServer.listen(0, '127.0.0.1')
@@ -214,6 +227,7 @@ async function runSmoke() {
   subprocess.execFile = realExecFile
   await app.whenReady()
   const window = BrowserWindow.getAllWindows()[0]
+  window.webContents.on('console-message', event => { if (event.level === 'error') console.error('Renderer:', event.message) })
   if (window.webContents.isLoading()) {
     await new Promise((resolve, reject) => {
       window.webContents.once('did-finish-load', resolve)
@@ -224,6 +238,7 @@ async function runSmoke() {
   await assert.rejects(window.webContents.executeJavaScript('window.loneXResources.list()'), /legal agreements/)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAutomation.status()'), /legal agreements/)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXStorage.scan()'), /legal agreements/)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXBrowser.status()'), /legal agreements/)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXLegal.accept({ revision: 0 })'), /current agreements/)
   window.webContents.openDevTools({ mode: 'detach', activate: false })
@@ -388,6 +403,14 @@ async function runSmoke() {
   assert.equal(softwareInstalls, 2)
   assert.equal(installedSoftware.inventory.tools.find(tool => tool.id === 'git').installed, true)
   assert.equal(installedSoftware.inventory.tools.find(tool => tool.id === 'git').lastAttempt.outcome, 'Installed and verified')
+  const archivePlan = await window.webContents.executeJavaScript("window.loneXSoftware.plan('7zip')")
+  assert.equal(archivePlan.packageId, '7zip.7zip')
+  assert.equal(archivePlan.verification, '7z.exe i')
+  dialog.showMessageBox = async () => ({ response: 1 })
+  const archiveInstall = await window.webContents.executeJavaScript("window.loneXSoftware.install('7zip')")
+  dialog.showMessageBox = softwareDialog
+  assert.equal(archiveInstall.outcome, 'Installed and verified')
+  assert.equal(archiveInstall.inventory.tools.find(tool => tool.id === '7zip').installed, true)
   assert.equal(await window.webContents.executeJavaScript('window.loneXAI.installModel(\'qwen2.5-coder:0.5b\')'), true)
   await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({ model: 'unapproved', text: 'test' })"))
   assert.equal(await window.webContents.executeJavaScript("window.loneXAI.installModel('gemma3:1b')"), true)
@@ -455,6 +478,7 @@ async function runSmoke() {
   assert.throws(() => process.kill(runningChild.pid, 0), { code: 'ESRCH' })
   assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed'])
   assert.equal((await window.webContents.executeJavaScript("window.loneXTerminal.run('LoneX -v')")).output, 'Lone X (Beta)')
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXTerminal.run('LoneX -uninstall')"), /Development files will be kept/)
   console.log('PowerShell allowlist, prompt-free execution, emergency stop, and audit passed.')
   await window.webContents.executeJavaScript(`
     (async () => {
@@ -760,7 +784,7 @@ async function runSmoke() {
       options().find(option => option.textContent.includes('Gemma 3 1B')).click()
       await waitFor(() => picker.textContent.includes('Gemma 3 1B') && workspace.querySelector('.ai-model-actions')?.textContent.includes('Download Gemma 3 1B'))
       picker.click()
-      await waitFor(() => options().length === 3)
+      await waitFor(() => options().length === 4)
       if (!options().find(option => option.textContent.includes('Gemma 3 1B')).matches('[aria-selected=true]')) throw new Error('Selected model was not marked')
       options().find(option => option.textContent.includes('Qwen2.5 0.5B')).click()
       await waitFor(() => picker.textContent.includes('Qwen2.5 0.5B'))
@@ -862,6 +886,99 @@ async function runSmoke() {
     db.close()
   }
   console.log('Chat UI Ollama discovery, streaming, retry, and SQLite storage passed.')
+  const storageFs = require('node:fs')
+  const storagePath = require('node:path')
+  const storageFolder = storageFs.mkdtempSync(storagePath.join(__dirname, '../node_modules/.storage-smoke-'))
+  const storagePicker = dialog.showOpenDialog
+  const storageConfirm = dialog.showMessageBox
+  const originalTrash = shell.trashItem
+  try {
+    storageFs.writeFileSync(storagePath.join(storageFolder, 'large.txt'), Buffer.alloc(1024))
+    storageFs.writeFileSync(storagePath.join(storageFolder, 'small.txt'), 'small')
+    const outside = storageFs.mkdtempSync(storagePath.join(__dirname, '../node_modules/.storage-outside-'))
+    try {
+      storageFs.writeFileSync(storagePath.join(outside, 'outside.txt'), 'external')
+      storageFs.symlinkSync(outside, storagePath.join(storageFolder, 'linked'), 'junction')
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [storageFolder] })
+      const scan = await window.webContents.executeJavaScript('window.loneXStorage.scan()')
+      assert.equal(scan.files, 2)
+      assert.equal(scan.skipped, 1)
+      assert.ok(scan.free >= 0 && scan.capacity > 0)
+      assert.deepEqual(scan.largest.map(item => item.name), ['large.txt', 'small.txt'])
+      assert.ok(scan.largest.every(item => item.removable))
+      await assert.rejects(window.webContents.executeJavaScript("window.loneXStorage.trash('../outside.txt')"), /reviewed file/)
+      dialog.showMessageBox = async () => ({ response: 0 })
+      assert.equal(await window.webContents.executeJavaScript("window.loneXStorage.trash('0')"), false)
+      assert.equal(storageFs.existsSync(storagePath.join(storageFolder, 'large.txt')), true)
+      storageFs.writeFileSync(storagePath.join(storageFolder, 'large.txt'), 'changed')
+      await assert.rejects(window.webContents.executeJavaScript("window.loneXStorage.trash('0')"), /changed/)
+      let trashed = 0
+      shell.trashItem = async filename => {
+        assert.equal(filename, storagePath.join(storageFolder, 'small.txt'))
+        storageFs.renameSync(filename, storagePath.join(storageFolder, 'recycled-fixture.txt'))
+        trashed++
+      }
+      dialog.showMessageBox = async () => ({ response: 1 })
+      assert.equal(await window.webContents.executeJavaScript("window.loneXStorage.trash('1')"), true)
+      assert.equal(trashed, 1)
+      await assert.rejects(window.webContents.executeJavaScript("window.loneXStorage.trash('1')"), /reviewed file/)
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [profile] })
+      const protectedScan = await window.webContents.executeJavaScript('window.loneXStorage.scan()')
+      assert.ok(protectedScan.largest.every(item => !item.removable))
+      await assert.rejects(window.webContents.executeJavaScript("window.loneXStorage.trash('0')"), /cannot be removed/)
+      dialog.showOpenDialog = async () => {
+        await window.webContents.executeJavaScript('window.loneXStorage.stop()')
+        return { canceled: false, filePaths: [storageFolder] }
+      }
+      assert.equal(await window.webContents.executeJavaScript('window.loneXStorage.scan()'), null)
+    } finally {
+      storageFs.unlinkSync(storagePath.join(storageFolder, 'linked'))
+      storageFs.rmSync(outside, { recursive: true, force: true })
+    }
+  } finally {
+    dialog.showOpenDialog = storagePicker
+    dialog.showMessageBox = storageConfirm
+    shell.trashItem = originalTrash
+    storageFs.rmSync(storageFolder, { recursive: true, force: true })
+  }
+  console.log('Selected-folder storage scan, linked-path protection, cancellation, stale review and approved recycling passed.')
+  const agentFolder = storageFs.mkdtempSync(storagePath.join(__dirname, '../.agent-ipc-'))
+  const agentPicker = dialog.showOpenDialog
+  try {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [agentFolder] })
+    const selectedAgentFolder = await window.webContents.executeJavaScript('Promise.resolve().then(() => window.loneXAI.chooseAgentFolder()).catch(error => ({ failure: error.message }))')
+    assert.equal(selectedAgentFolder, agentFolder, JSON.stringify(selectedAgentFolder))
+    console.log('Agent test folder selected.')
+    const agentInstall = await window.webContents.executeJavaScript("Promise.resolve().then(() => window.loneXAI.installModel('qwen3:4b-instruct')).catch(error => ({ failure: error.message }))")
+    assert.equal(agentInstall, true, JSON.stringify(agentInstall))
+    console.log('Agent test model installed.')
+    const agentSend = window.webContents.executeJavaScript("Promise.resolve().then(() => window.loneXAI.send({ model: 'qwen3:4b-instruct', text: 'Create hello.txt', chatId: 'agent-fixture', agent: true })).catch(error => ({ failure: error.message }))")
+    const agentReviewResult = await window.webContents.executeJavaScript(`(async () => {
+      for (let i = 0; i < 100; i++) {
+        const review = document.querySelector('[aria-label="Review agent action"]')
+        if (review) {
+          if (!review.textContent.includes('Hello from the agent')) throw new Error('Agent change preview is missing')
+          const approveButton = [...review.querySelectorAll('button')].find(button => button.textContent === 'Approve create')
+          approveButton.click()
+          return { ok: true }
+        }
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      throw new Error('Agent approval did not appear')
+    })().catch(error => ({ failure: error.message }))`)
+    assert.equal(agentReviewResult?.failure, undefined, agentReviewResult?.failure)
+    const agentHistory = await agentSend
+    assert.ok(Array.isArray(agentHistory), JSON.stringify(agentHistory))
+    assert.equal(storageFs.readFileSync(storagePath.join(agentFolder, 'hello.txt'), 'utf8'), 'Hello from the agent')
+    assert.match(agentHistory.at(-1).content, /File created/)
+    await window.webContents.executeJavaScript('window.loneXAI.disconnectAgent()')
+    await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({ model: 'qwen3:4b-instruct', text: 'Blocked', chatId: 'agent-fixture', agent: true })"), /choose an agent folder/)
+  } finally {
+    dialog.showOpenDialog = agentPicker
+    assert.equal(storagePath.dirname(storagePath.resolve(agentFolder)), storagePath.resolve(__dirname, '..'))
+    storageFs.rmSync(agentFolder, { recursive: true, force: true })
+  }
+  console.log('Qwen3 download, Chat agent tool dispatch, rendered change review and approved file creation passed.')
   const quotaDb = new DatabaseSync(require('node:path').join(profile, 'conversation.sqlite'))
   try {
     quotaDb.prepare("UPDATE token_windows SET used = 100000 WHERE id = 'five-hour'").run()
@@ -895,6 +1012,7 @@ async function runSmoke() {
     Date.now = realNow
   }
   console.log('Encrypted three-day session and expiry enforcement passed.')
+  assert.equal(window.isMaximized(), true)
   console.log('Desktop loaded, theme toggled, primary navigation worked, and renderer Node access was absent.')
 }
 

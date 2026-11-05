@@ -25,6 +25,7 @@ const help = [
   '  LoneX -v                              Show the version of LoneX',
   '  LoneX -Avail                          Check whether a newer build is available',
   '  LoneX -update                         Check for Updates',
+  '  LoneX -uninstall                      Open the Lone X uninstaller',
   '',
   'Console commands: help, clear (cls)',
   'Enter runs a command. Up/Down recalls commands. Ctrl+C stops a running command.'

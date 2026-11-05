@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import FlipCard from './react-bits/FlipCard'
 import SquishSwitch from './react-bits/SquishSwitch'
 import UsageLimits from './UsageLimits'
+import Storage from './Storage'
 import AIWorkspace from './AIWorkspace'
 import OverviewActivity from './OverviewActivity'
 import Activity from './Activity'
@@ -39,6 +40,7 @@ const pages = [
   { name: 'Legal & Policies', icon: ShieldCheck, detail: 'Review the terms, privacy policy, and software license.' },
   { name: 'Software', icon: Boxes, detail: 'Find and install development tools through Windows.' },
   { name: 'Automation', icon: LayoutDashboard, detail: 'Review Windows app launches and local system status.' },
+  { name: 'Storage & files', icon: Folder, detail: 'Review folder sizes, recycle selected files, and access file editing.' },
 ] as const
 
 function usePreference(key: string, initial: string) {
@@ -180,6 +182,7 @@ function App() {
           {page.name === 'Legal & Policies' && <LegalSettings />}
           {page.name === 'Software' && <Software />}
           {page.name === 'Automation' && <Automation />}
+          {page.name === 'Storage & files' && <Storage openProjects={() => setPage(pages[2])} />}
           <div hidden={!inChat}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>

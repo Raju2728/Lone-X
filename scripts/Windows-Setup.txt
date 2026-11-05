@@ -26,6 +26,7 @@ in PowerShell for the models you want:
   ollama pull qwen2.5:0.5b
   ollama pull qwen2.5-coder:0.5b
   ollama pull gemma3:1b
+  ollama pull qwen3:4b-instruct
   ollama list
 
 Use the in-app download button with the ZIP. The bundled runtime stores
@@ -56,3 +57,53 @@ In Settings > Terminal, type LoneX -v to see the build label. Type
 LoneX -Avail to check GitHub without downloading, or LoneX -update to
 download a newer verified ZIP if one is available. Extract
 an update to a new folder and open its Lone X.exe after closing the old app.
+
+PC STORAGE, FILES AND APPLICATIONS
+
+Settings > Storage & files reviews a folder selected through the Windows picker.
+It shows free drive space and up to 30 largest files from a bounded scan.
+You can approve moving a reviewed file to the Windows Recycle Bin. System and
+Lone X files are protected. Refresh the scan after changes. Permission errors
+are reported; Windows access controls still apply.
+
+Use Projects to read UTF-8 text files, save edited copies, or review supported
+in-place edits with backups. Settings > Software offers Node.js LTS, Git and
+7-Zip through WinGet. Review the plan and publisher installer before proceeding.
+
+UNINSTALL
+
+In the app Terminal, run LoneX -uninstall to open the uninstaller. You can
+also close Lone X and double-click Uninstall-LoneX.cmd in the extracted folder.
+Review and confirm the exact folder shown. It removes that app copy and its
+bundled Ollama runtime/models. Local accounts, chats and settings are kept.
+To also erase Lone X local profiles, open PowerShell in the extracted folder:
+  $lonexUninstaller = Join-Path (Get-Location) 'Uninstall-LoneX.ps1'
+  Set-Location $env:TEMP
+  powershell -NoProfile -ExecutionPolicy Bypass -File $lonexUninstaller -RemoveUserData
+To preview removal without changing files, use:
+  powershell -NoProfile -ExecutionPolicy Bypass -File .\Uninstall-LoneX.ps1 -WhatIf
+Standalone Ollama, other installed tools, external projects and external
+downloads are preserved. Anything you placed inside the app folder is removed
+with that folder, so move personal files out first. Linked files/folders must
+be removed manually before uninstalling. No administrator launch is required
+unless Windows permissions on the chosen extraction folder require it.
+
+CHAT AGENT
+
+In Chat, click Choose agent folder and select a separate project folder.
+This selects Qwen3 4B Instruct and enables Agent mode. Download the model
+when prompted (about 2.5 GB); afterward it runs locally without an API key.
+This model uses Apache 2.0: https://ollama.com/library/qwen3:4b-instruct
+The model is downloaded on demand, not stored in the Git repository or ZIP.
+
+Ask Raju to create or edit files in that folder. Review the full current and
+proposed content, then approve or reject each change. Existing files must
+be read before edits. Backups are kept in .lone-x-backups. Recycling also
+requires approval. Disconnect revokes this session's selected folder.
+
+Agent scope: UTF-8 text files up to 16 KB, bounded directory listings, up
+to 16 tool actions per turn, and approved npm tests or lockfile-based npm
+dependency installs. Scripts run with your Windows permissions and can
+access files/network beyond the folder, so inspect the command review.
+Stop cancels further work; already approved changes remain and are reported.
+Model performance and accuracy vary by PC. Verify generated code and tests.

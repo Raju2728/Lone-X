@@ -14,12 +14,15 @@ try {
         Get-ChildItem -LiteralPath $runtime | Copy-Item -Destination $bundle.FullName -Recurse
         Rename-Item -LiteralPath (Join-Path $bundle.FullName 'electron.exe') -NewName 'Lone X.exe'
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Windows-Setup.txt') -Destination $bundle.FullName
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.ps1') -Destination $bundle.FullName
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall-LoneX.cmd') -Destination $bundle.FullName
         $app = New-Item -ItemType Directory (Join-Path $bundle.FullName 'resources/app')
         Copy-Item desktop -Destination $app.FullName -Recurse
         $dependencies = New-Item -ItemType Directory (Join-Path $app.FullName 'node_modules')
         Copy-Item node_modules/nodemailer -Destination $dependencies.FullName -Recurse
-        $revision = git rev-parse HEAD
-        if ($LASTEXITCODE -eq 0 -and $revision -match '^[a-f0-9]{40}$') {
+        $revision = git -c "safe.directory=$((Get-Location).Path.Replace('\', '/'))" rev-parse HEAD
+        $dirty = git -c "safe.directory=$((Get-Location).Path.Replace('\', '/'))" status --porcelain -- desktop src scripts package.json package-lock.json
+        if ($LASTEXITCODE -eq 0 -and !$dirty -and $revision -match '^[a-f0-9]{40}$') {
             @{ revision = $revision } | ConvertTo-Json -Compress | Set-Content -Encoding ascii (Join-Path $app.FullName 'build-info.json')
         }
         $web = New-Item -ItemType Directory (Join-Path $app.FullName 'dist')

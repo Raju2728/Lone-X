@@ -6,7 +6,8 @@ const path = require('node:path')
 
 const catalog = [
   { id: 'node', name: 'Node.js LTS', packageId: 'OpenJS.NodeJS.LTS', parts: ['nodejs', 'node.exe'], purpose: 'Runs npm projects and their tests' },
-  { id: 'git', name: 'Git', packageId: 'Git.Git', parts: ['Git', 'cmd', 'git.exe'], purpose: 'Version control for development projects' }
+  { id: 'git', name: 'Git', packageId: 'Git.Git', parts: ['Git', 'cmd', 'git.exe'], purpose: 'Version control for development projects' },
+  { id: '7zip', name: '7-Zip', packageId: '7zip.7zip', parts: ['7-Zip', '7z.exe'], versionArgs: ['i'], purpose: 'Create and extract compressed archives' }
 ]
 const installArgs = item => ['install', '--id', item.packageId, '--exact', '--source', 'winget', '--interactive', '--disable-interactivity', '--no-upgrade']
 function processIsRunning(pid) {
@@ -47,7 +48,7 @@ function registerSoftware(app, rendererPath, requireAccount) {
   async function inventory() {
     const manager = await execute(winget, ['--version'])
     const tools = await Promise.all(catalog.map(async item => {
-      const result = await execute(binaryFor(item), ['--version'])
+      const result = await execute(binaryFor(item), item.versionArgs ?? ['--version'])
       let lastAttempt = latestAttempt.get(item.id) ?? null
       if (lastAttempt?.outcome === 'Verification required' && result.code === 0) {
         finishAttempt.run('Detected after restart', Date.now(), lastAttempt.id)
@@ -78,7 +79,7 @@ function registerSoftware(app, rendererPath, requireAccount) {
     if (!state.wingetAvailable) throw new Error('WinGet is unavailable. Install or repair Windows App Installer first.')
     if (state.tools.find(tool => tool.id === id)?.installed) throw new Error('This tool is already installed.')
     return { id: item.id, name: item.name, packageId: item.packageId, command: 'winget ' + installArgs(item).join(' '),
-      verification: path.basename(binaryFor(item)) + ' --version' }
+      verification: path.basename(binaryFor(item)) + ' ' + (item.versionArgs ?? ['--version']).join(' ') }
   })
 
   handle('install', async (sender, id) => {

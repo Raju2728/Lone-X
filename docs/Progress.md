@@ -1,5 +1,9 @@
 # Development progress
 
+## Beta publication — 5 November 2026
+
+The founder authorized publication of the current code and replacement Windows ZIP. This supersedes the earlier release hold. The build remains Lone X (Beta); unfinished milestone acceptance checks, including clean-Windows software installation, remain open. The release retains the stable Lone-X-Windows.zip filename and includes the setup guide, uninstall scripts, selected-folder Chat agent, on-demand Qwen3 4B Instruct, storage review and fading responses.
+
 ## Milestone 1 — In progress
 
 The responsive landing page and Electron renderer share the supplied Lone X logo and light and dark theme tokens. The landing page uses Glare Hover from React Bits. The desktop shell provides overview, workspace draft, projects status, task status, terminal status, activity, and appearance settings. Draft and theme preferences use browser storage in this milestone.
@@ -70,7 +74,7 @@ Installation attempts are recorded locally in SQLite. An unfinished attempt from
 
 The model manager reuses installed models without pulling them again. Tests cover cancellation, interrupted transfers, and a success response whose model is missing from the local inventory.
 
-Live installation on a clean Windows profile remains unverified. The founder has no VM or spare Windows PC available, and Windows Sandbox is absent on the current PC. The build and simulated desktop checks passed. Application publication remains on hold.
+Live installation on a clean Windows profile remains unverified. The founder has no VM or spare Windows PC available, and Windows Sandbox is absent on the current PC. The build and simulated desktop checks passed. Beta publication has now been authorized; the clean-Windows check remains open.
 
 ## Milestone 7 — In progress
 
@@ -84,7 +88,21 @@ Desktop checks use local page fixtures to verify same-origin navigation, blocked
 
 The browser workspace now provides Back, Forward and Reload. The main process accepts only these fixed actions and checks each destination against the approved HTTPS origin, including history entries. Controls reflect available history, and Stop remains available while loading. Same-page navigation updates the displayed URL; browser process failure is reported. Desktop checks cover back/forward navigation, reload, unavailable history and invalid actions. Broader application interactions and final release quality assurance remain outstanding.
 
-Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The downloadable Windows release remains held until the outstanding milestone checks are complete, including a real clean-Windows software installation test.
+Settings → Storage & files scans a user-selected folder, reports its drive capacity/free space, and lists the 30 largest files from up to 5,000 entries. Links and inaccessible entries are skipped and partial scans are labeled. The user can stop scanning. Removal is limited to individually reviewed regular files, requires native confirmation, checks for changed paths/contents metadata, and uses Windows Recycle Bin. System directories and Lone X application/profile files are protected. Projects provides the existing selected-file read/edit workflow. Software now includes 7-Zip alongside Node.js LTS and Git through WinGet. Real clean-system installations remain unverified.
+
+The portable Windows package includes Uninstall-LoneX.cmd and Uninstall-LoneX.ps1. Uninstall validates the package folder, refuses reparse points, confirms the exact targets, stops only processes from that extracted folder, and removes that app copy and bundled models. Local profiles are retained unless -RemoveUserData is explicitly used. Standalone Ollama and external projects/tools are kept. Temporary-folder tests verify preview, invalid package rejection, link rejection, default retention and explicit profile deletion. Privacy Policy 1.2 and consent revision 3 disclose the storage tools.
+
+The production renderer build, desktop storage checks and temporary-folder uninstall tests passed. The local Lone-X-Windows.zip was rebuilt with the bundled runtime/model, setup instructions and both uninstall scripts; archive entries were hash-checked against source. This local build omits a published revision marker while source changes are uncommitted. GitHub release replacement has now been authorized.
+
+The terminal recognizes LoneX -uninstall and opens only the uninstaller beside the packaged executable. Windows shows the uninstall confirmation in a separate PowerShell window. Development builds refuse this command, and launching the script does not claim removal has finished. The workspace opens maximized, with normal Windows restore/minimize controls available.
+
+Chat now has an optional selected-folder Agent mode with Qwen3 4B Instruct. The model manager supports on-demand model installation with existing progress/cancellation and cache reuse. The agent loop inspects folders and text files, proposes file creation/edits/recycling for explicit review, and requests reviewed npm dependency installs or tests. Existing files are checked against read snapshots, edits/recycling retain backups, and common credential paths and links are rejected. Folder access can be disconnected. Each provider request shares the five-hour/weekly token budget; interrupted turns retain action receipts. The loop is bounded to eight model rounds and 16 tool actions. Text files are limited to 16 KB. Privacy Policy 1.3 and consent revision 4 disclose these features.
+
+Agent unit checks verify path restrictions, review denial, backups, stale-content handling (including changes during review), recycling, command review, tool dispatch, cancellation and token accounting. The desktop fixture verifies Qwen3 Instruct download, rendered before/after review and approved file creation through Chat IPC. A live Qwen3 4B Instruct task created an approved hello.txt, read it back and verified the exact content, consuming 2,204 reported tokens. The general Qwen3 4B tag had spent its response budget reasoning, so the agent uses the official Instruct variant instead. Ten unit checks and the full desktop smoke suite passed. The local ZIP was rebuilt and its agent, IPC, legal, renderer index, guide and uninstall files hash-checked against source. Optional model weights remain on-demand downloads rather than ZIP or Git contents. No claim of Codex-equivalent model capability is made. Public Beta release replacement has now been authorized.
+
+Assistant responses now reveal incoming words in short batches with a soft opacity fade. Completed text is flushed without replaying earlier chunks; saved history stays static. Reduced-motion preferences disable the animation, and follow-latest scrolling also updates when a batch is revealed.
+
+Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The founder subsequently authorized publishing this Beta while a real clean-Windows software installation test remains outstanding.
 
 ## Local AI usage windows
 
@@ -92,4 +110,4 @@ Lone X defaults to 100,000 input/output tokens per five hours and 1,000,000 per 
 
 Chat, automatic titles, plans and repair suggestions all pass through the main-process limiter. A request already admitted can finish over a limit; the next request is blocked until both windows have remaining capacity. Ollama completion counters supply input/output usage, including history and attachments. Interrupted streams and missing counters use a conservative UTF-8 byte estimate. Network and HTTP failures before streaming do not consume tokens. The sidebar Limits option opens remaining allowance bars and reset timestamps: five-hour above weekly, green at 70–100%, orange at 40–below 70%, yellow at 10–below 40%, and red below 10%. Its circular icon uses the upper arc for five-hour and lower arc for weekly. The scope is local usage management, not tamper-resistant cloud billing.
 
-`node --test tests/token-limits.cjs` verifies persistence, independent resets at exact boundaries, exhausted-window enforcement, late completions, interrupted responses and missing counters. Application publication remains on hold with the unfinished milestones.
+`node --test tests/token-limits.cjs` verifies persistence, independent resets at exact boundaries, exhausted-window enforcement, late completions, interrupted responses and missing counters. Beta publication has been authorized; the unfinished milestones remain tracked separately.

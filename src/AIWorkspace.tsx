@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Cpu, Ellipsis, FileText, MessageSquare, Plus, Radio, Trash2, UserRound } from 'lucide-react'
 import LatticeLoader from './react-bits/LatticeLoader'
 import PromptBar, { type PromptBarSendDetail } from './react-bits/PromptBar'
+import ResponseText from './ResponseText'
 import type { Usage } from './OverviewActivity'
 import { chatModels, defaultModel, type ModelInventoryItem, type ModelProgress } from './modelCatalog'
 
@@ -12,10 +13,15 @@ const responseEfforts = ['Short', 'Balanced', 'Detailed']
 const loadingLabels = ['Thinking…', 'Yosichufying…']
 
 type Message = { role: 'user' | 'assistant'; content: string }
+type AgentReview = { id: string; kind: string; path: string; before: string; after: string; note: string }
 
 declare global {
   interface Window {
     loneXAI: {
+      chooseAgentFolder: () => Promise<string | null>
+      disconnectAgent: () => Promise<void>
+      reviewAgent: (input: { id: string; accept: boolean }) => Promise<void>
+      onAgentReview: (callback: (review: AgentReview | null) => void) => () => void
       plan: (task: string) => Promise<{ summary: string; steps: { action: string; verify: string; tool?: 'version' | 'memory' | 'get-location' }[] } | null>
       history: (id?: string) => Promise<Message[]>
       models: () => Promise<string[]>
@@ -24,7 +30,7 @@ declare global {
       onModelProgress: (callback: (progress: ModelProgress) => void) => () => void
       overview: () => Promise<Usage>
       overviewUpdate: () => Promise<string | null>
-      send: (input: { model: string; text: string; chatId: string; effort?: string }) => Promise<Message[] | null>
+      send: (input: { model: string; text: string; chatId: string; effort?: string; agent?: boolean }) => Promise<Message[] | null>
       installModel: (model: string) => Promise<boolean>
       conversations: () => Promise<Conversation[]>
       deleteChat: (id: string) => Promise<Conversation[]>
@@ -38,6 +44,10 @@ declare global {
 
 export default function AIWorkspace({ active, draft, setDraft }: { active: boolean; draft: string; setDraft: (draft: string) => void }) {
   const [model, setModel] = useState(defaultModel)
+  const [agent, setAgent] = useState(false)
+  const [agentFolder, setAgentFolder] = useState('')
+  const [review, setReview] = useState<AgentReview | null>(null)
+  const [choosingFolder, setChoosingFolder] = useState(false)
   const [installedModels, setInstalledModels] = useState<string[]>([])
   const [installing, setInstalling] = useState(false)
   const needsModel = model !== defaultModel && !installedModels.includes(model)
@@ -57,6 +67,23 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   const newChatButton = useRef<HTMLButtonElement>(null)
   const files = useRef(new Map<string, File>())
   const followLatest = useRef(true)
+
+  useEffect(() => api.onAgentReview(setReview), [api])
+
+  async function chooseAgentFolder() {
+    setChoosingFolder(true); setError('')
+    try {
+      const folder = await api.chooseAgentFolder()
+      if (folder) { setAgentFolder(folder); setAgent(true); setModel('qwen3:4b-instruct') }
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not choose agent folder.') }
+    finally { setChoosingFolder(false) }
+  }
+
+  async function decideReview(accept: boolean) {
+    if (!review) return
+    try { await api.reviewAgent({ id: review.id, accept }) }
+    catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not submit the review.') }
+  }
 
   useEffect(() => {
     if (!active) return
@@ -190,7 +217,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
       }))
       const message = [text, ...excerpts].filter(Boolean).join('\n\n')
       if (message.length > 16000) throw new Error('Keep the prompt and attached text within 16,000 characters.')
-      const history = await api.send({ model, text: message, chatId, effort: detail.effort })
+      const history = await api.send({ model, text: message, chatId, effort: detail.effort, agent })
       if (!history) return false
       setMessages(history)
       setDraft('')
@@ -212,6 +239,12 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
   return <section className="ai-console" aria-label="AI conversation">
     <div className="ai-console-bar">
       <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · Ollama on this PC</small></div></div>
+      <div className="agent-controls">
+        <button className="provider-button" aria-pressed={agent} disabled={!!pending || installing || choosingFolder} onClick={() => { setAgent(value => !value); if (!agent) setModel('qwen3:4b-instruct') }}>Agent {agent ? 'on' : 'off'}</button>
+        <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder()}>{choosingFolder ? 'Choosing…' : agentFolder ? 'Change folder' : 'Choose agent folder'}</button>
+        {agentFolder && <span className="agent-folder" title={agentFolder}>{agentFolder}</span>}
+        {agentFolder && <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void api.disconnectAgent().then(() => { setAgentFolder(''); setAgent(false) }).catch(() => setError('Could not disconnect the folder.'))}>Disconnect</button>}
+      </div>
     </div>
 
     <div className="ai-workbench">
@@ -260,7 +293,10 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
           <span className="ai-avatar">{user ? <UserRound size={16} aria-hidden="true" /> : <Cpu size={16} aria-hidden="true" />}</span>
           <div className="ai-turn-body">
             <strong>{user ? 'You' : 'Raju'}</strong>
-            {message.content && <p>{message.content}</p>}
+            {message.content && (user ? <p>{message.content}</p> : <ResponseText text={message.content} streaming={streaming} onReveal={() => {
+              const log = transcript.current
+              if (log && followLatest.current) log.scrollTop = log.scrollHeight
+            }} />)}
             {streaming && !response && <LatticeLoader className="ai-thinking" label={loadingLabel} pattern="sweep" grid={4}
               shape="round" cellSize={3} gap={2} fontSize={13} color="var(--accent)" showTimer={false} />}
           </div>
@@ -269,11 +305,20 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     </div>
 
     <div className="ai-compose">
-      <PromptBar key={chatId} value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready || deleting || installing || needsModel}
+      {agent && !agentFolder && <p className="muted">Choose a project folder to allow agent tools. File changes require review.</p>}
+      {review && <section className="agent-review" aria-label="Review agent action">
+        <strong>Review {review.kind} · {review.path}</strong><p>{review.note}</p>
+        <div className="agent-review__changes">
+          <div><small>Current content / script</small><pre tabIndex={0}>{review.before || (review.kind === 'command' ? '(dependency install)' : '(empty or new file)')}</pre></div>
+          <div><small>Proposed content / command</small><pre tabIndex={0}>{review.after || (review.kind === 'recycle' ? '(move to Recycle Bin)' : '(empty file)')}</pre></div>
+        </div>
+        <div className="agent-controls"><button className="provider-button" onClick={() => void decideReview(false)}>Reject</button><button className="provider-button" onClick={() => void decideReview(true)}>Approve {review.kind}</button></div>
+      </section>}
+      <PromptBar key={chatId} value={draft} onValueChange={setDraft} busy={!!pending} disabled={!ready || deleting || installing || needsModel || choosingFolder || (agent && !agentFolder)}
         onSend={send} onStop={() => void api.stop().catch(() => setError('Could not stop the response.'))}
         sources={fileSources} onAttach={attachFiles} onDictate={dictate} onCancelDictation={stopDictation}
         commands={[]} models={chatModels} efforts={responseEfforts} selectedModel={model} modelLocked={installing || deleting}
-        onModelChange={key => { setModel(key); setError('') }}
+        onModelChange={key => { setModel(key); if (key !== 'qwen3:4b-instruct') setAgent(false); setError('') }}
         placeholder="Ask Anything" radius={24} background="var(--bg)" color="var(--text)" menuBackground="var(--surface)" sparkColor="var(--accent)" />
       {needsModel && <div className="ai-model-actions">
         {installing ? <>

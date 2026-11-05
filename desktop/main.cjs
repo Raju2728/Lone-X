@@ -8,12 +8,14 @@ const { registerResources } = require('./resources.cjs')
 const { registerSoftware } = require('./software.cjs')
 const { registerAutomation } = require('./automation.cjs')
 const { registerBrowser } = require('./browser.cjs')
+const { registerStorage } = require('./storage.cjs')
 const { registerLegal } = require('./legal.cjs')
 const rendererPath = path.join(__dirname, '../dist/index.html')
 
 function createWindow() {
   const window = new BrowserWindow({
     title: 'Lone X',
+    show: false,
     width: 1320,
     height: 860,
     minWidth: 760,
@@ -24,6 +26,7 @@ function createWindow() {
   })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', event => event.preventDefault())
+  window.once('ready-to-show', () => { window.maximize(); window.show() })
   window.loadFile(rendererPath, { hash: 'workspace' })
 }
 
@@ -39,6 +42,7 @@ app.whenReady().then(() => {
   registerSoftware(app, rendererPath, requireAccount)
   registerAutomation(app, rendererPath, requireAccount)
   registerBrowser(rendererPath, requireAccount)
+  registerStorage(app, rendererPath, requireAccount)
   createWindow()
 })
 app.on('window-all-closed', () => app.quit())

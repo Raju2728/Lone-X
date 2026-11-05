@@ -401,3 +401,15 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 .usage-limits small, .usage-limits p { color: var(--muted); }
 .usage-limits p { margin: 10px 0 0; line-height: 1.5; font-size: 11px; }
 @media (prefers-reduced-motion: reduce) { .usage-limit__track > div { transition: none; } }
+.ai-console-bar { flex-wrap: wrap; }
+.agent-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.agent-controls button { font-size: 12px; }
+.agent-folder { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.agent-review { max-height: 50vh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+.agent-review > p { font-size: 12px; color: var(--muted); }
+.agent-review__changes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+.agent-review pre { max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; background: var(--bg); padding: 10px; }
+@media (max-width: 900px) { .agent-review__changes { grid-template-columns: 1fr; } }
+.ai-response-reveal { animation: response-fade 420ms ease-out both; }
+@keyframes response-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ai-response-reveal { animation: none; } }

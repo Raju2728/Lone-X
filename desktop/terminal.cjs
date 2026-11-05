@@ -4,6 +4,7 @@ const { DatabaseSync } = require('node:sqlite')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
 const { checkUpdate, downloadUpdate, upToDate, versionLabel } = require('./update.cjs')
+const { launchUninstaller } = require('./uninstall.cjs')
 
 const version = { label: 'PowerShell version', script: '$PSVersionTable.PSVersion.ToString()' }
 const memory = { label: 'Available memory', script: 'Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize, FreePhysicalMemory | Format-List' }
@@ -18,7 +19,8 @@ const commands = new Map([
   ['pwd', location],
   ['lonex -v', { label: 'Lone X version', action: 'version' }],
   ['lonex -avail', { label: 'Lone X update availability', action: 'avail' }],
-  ['lonex -update', { label: 'Lone X update', action: 'update' }]
+  ['lonex -update', { label: 'Lone X update', action: 'update' }],
+  ['lonex -uninstall', { label: 'Lone X uninstall', action: 'uninstall' }]
 ])
 
 function registerTerminal(app, rendererPath, requireAccount) {
@@ -65,6 +67,12 @@ function registerTerminal(app, rendererPath, requireAccount) {
       if (command.action === 'version') {
         finish.run('Completed', entry)
         return { outcome: 'Completed', output: versionLabel }
+      }
+      if (command.action === 'uninstall') {
+        run.controller = new AbortController()
+        const output = await launchUninstaller(app, undefined, run.controller.signal)
+        finish.run('Uninstaller opened', entry)
+        return { outcome: 'Uninstaller opened', output }
       }
       if (command.action === 'avail' || command.action === 'update') {
         run.controller = new AbortController()

@@ -3,7 +3,10 @@ const { execFile } = require('node:child_process')
 const { promisify } = require('node:util')
 const { fileURLToPath } = require('node:url')
 const path = require('node:path')
-const { ipcMain } = require('electron')
+const { ipcMain, BrowserWindow, dialog, shell } = require('electron')
+const { realpath } = require('node:fs/promises')
+const { randomUUID } = require('node:crypto')
+const { agentModel, createWorkspace, runAgent } = require('./chat-agent.cjs')
 const { localRuntime } = require('./ollama-runtime.cjs')
 const { checkUpdate, versionLabel } = require('./update.cjs')
 const { tokenLimits } = require('./token-limits.cjs')
@@ -12,7 +15,7 @@ const retentionMs = 30 * 24 * 60 * 60 * 1000
 const ollama = 'http://127.0.0.1:11434'
 const coderModel = 'qwen2.5-coder:0.5b'
 const gemmaModel = 'gemma3:1b'
-const localModels = new Set(['qwen2.5:0.5b', coderModel, gemmaModel])
+const localModels = new Set(['qwen2.5:0.5b', coderModel, gemmaModel, agentModel])
 const responseLimits = new Map([['Short', 384], ['Balanced', 1024], ['Detailed', 4096]])
 const runFile = promisify(execFile)
 const dictationScript = `
@@ -46,7 +49,7 @@ async function streamReply(model, messages, onDelta, signal, request = fetch, en
   const settle = budget?.begin()
   const response = await request(endpoint + '/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal, redirect: 'error',
-    body: JSON.stringify({ model, messages, format, stream: true, options: { num_predict: numPredict, temperature } })
+    body: JSON.stringify({ model, messages, format, stream: true, ...(model === agentModel ? { think: false } : {}), options: { num_predict: numPredict, temperature, ...(model === agentModel ? { num_ctx: 4096 } : {}) } })
   }).catch(() => { throw new Error('Could not reach Ollama. Start it on this PC and try again.') })
   if (response.status === 404 && localModels.has(model)) throw new Error('Ollama returned HTTP 404. Check whether the model is installed in Settings → Local models.')
   if (!response.ok || !response.body) throw new Error('Ollama returned HTTP ' + response.status + '. Check the selected model.')
@@ -221,6 +224,8 @@ function registerAI(app, rendererPath, requireAccount) {
     id, title: title || shortTitle(preview ?? '') || 'Untitled chat', updatedAt
   }))
   let active
+  const agentFolders = new WeakMap()
+  let agentReview
   let dictation
   app.once('before-quit', () => dictation?.abort())
 
@@ -292,6 +297,43 @@ function registerAI(app, rendererPath, requireAccount) {
   const installedModels = async () => (await modelInventory()).map(model => model.name)
   handle('models', installedModels)
   handle('model-inventory', () => modelInventory())
+  handle('agent-folder', async event => {
+    if (active) throw new Error('Finish the current response before changing the agent folder.')
+    const selected = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), { title: 'Allow Chat agent to inspect this project folder', properties: ['openDirectory'] })
+    if (selected.canceled || !selected.filePaths[0]) return null
+    requireAccount(event.sender)
+    if (active) throw new Error('Finish the current response before changing the agent folder.')
+    const root = await realpath(selected.filePaths[0])
+    const protectedRoots = [process.env.SystemRoot, process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.ProgramData, app.getPath('appData'), app.getPath('userData'), path.dirname(process.execPath)].filter(Boolean)
+    if (root === path.parse(root).root || root.toLowerCase() === app.getPath('home').toLowerCase() || protectedRoots.some(base => {
+      const relative = path.relative(base, root)
+      return !relative || (!relative.startsWith('..') && !path.isAbsolute(relative))
+    }) || root.split(/[\\/]/).some(part => ['.ssh', '.aws', '.codex', '.gnupg', '.azure', '.kube', '.git', 'node_modules'].includes(part.toLowerCase()))) throw new Error('Choose a project folder outside system, application and credential directories.')
+    agentFolders.set(event.sender, root)
+    return root
+  })
+  handle('agent-review', (event, input) => {
+    if (!agentReview || agentReview.sender !== event.sender || input?.id !== agentReview.id || typeof input?.accept !== 'boolean') throw new Error('This agent review is no longer active.')
+    agentReview.finish(input.accept)
+  })
+  handle('agent-disconnect', event => {
+    if (active) throw new Error('Stop the current response before disconnecting the folder.')
+    agentFolders.delete(event.sender)
+  })
+  async function approveAgent(sender, details, signal) {
+    signal.throwIfAborted()
+    requireAccount(sender)
+    return new Promise((resolve, reject) => {
+      const id = randomUUID()
+      const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', abort); if (agentReview?.id === id) agentReview = null; if (!sender.isDestroyed()) sender.send('ai:agent-review', null) }
+      const finish = accepted => { cleanup(); resolve(accepted) }
+      const abort = () => { cleanup(); reject(signal.reason) }
+      const timer = setTimeout(() => finish(false), 5 * 60 * 1000)
+      agentReview = { id, sender, finish }
+      signal.addEventListener('abort', abort, { once: true })
+      sender.send('ai:agent-review', { id, ...details })
+    })
+  }
   handle('overview', () => ({ ...usage.get(), version: versionLabel, limits: budget.status() }))
   handle('overview-update', async () => {
     const update = await checkUpdate(AbortSignal.timeout(5000), fetch, undefined, true).catch(() => null)
@@ -373,6 +415,9 @@ function registerAI(app, rendererPath, requireAccount) {
 
   handle('send', async (event, input) => {
     const { model, text, effort } = input ?? {}
+    const agent = input?.agent === true
+    const agentRoot = agentFolders.get(event.sender)
+    if (agent && (model !== agentModel || !agentRoot)) throw new Error('Select Qwen3 4B and choose an agent folder first.')
     const id = chatId(input?.chatId)
     if (!localModels.has(model) ||
         typeof text !== 'string' || !text.trim() || text.length > 16000) throw new Error('Enter a model and an instruction of up to 16,000 characters.')
@@ -380,18 +425,22 @@ function registerAI(app, rendererPath, requireAccount) {
     prune()
     const controller = new AbortController()
     active = { sender: event.sender, controller }
+    const destroyed = () => controller.abort()
+    event.sender.once('destroyed', destroyed)
     const messages = [...recent.all(id), { role: 'user', content: text }]
     const startedAt = performance.now()
     let reply = ''
     try {
-      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(180000)])
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(agent ? 10 * 60 * 1000 : 180000)])
       const onDelta = delta => {
         reply += delta
         if (!event.sender.isDestroyed()) event.sender.send('ai:delta', delta)
       }
       const endpoint = await runtime()
       signal.throwIfAborted()
-      let tokens = await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
+      const execute = agent ? createWorkspace(agentRoot, { signal, authorize: () => requireAccount(event.sender), approve: details => approveAgent(event.sender, details, signal), trash: filename => shell.trashItem(filename) }) : null
+      let tokens = agent ? await runAgent({ messages: messages.slice(-7), endpoint, signal, budget, execute, onDelta })
+        : await streamReply(model, messages, onDelta, signal, fetch, endpoint, undefined, responseLimits.get(effort) ?? 4096, undefined, budget)
       controller.signal.throwIfAborted()
       if (!reply.trim()) throw new Error('The selected model returned no text.')
       let title = existingTitle.get(id)?.chat_title
@@ -422,9 +471,20 @@ function registerAI(app, rendererPath, requireAccount) {
       }
       return list.all(id)
     } catch (error) {
+      if (agent && reply.trim()) {
+        const notice = controller.signal.aborted ? 'Agent stopped. Previously approved changes remain.' : 'Agent ended: ' + error.message
+        db.exec('BEGIN')
+        try {
+          insert.run('user', text, Date.now(), id, existingTitle.get(id)?.chat_title ?? 'Agent task')
+          insert.run('assistant', reply + '\n' + notice, Date.now(), id, null)
+          db.exec('COMMIT')
+        } catch (saveError) { db.exec('ROLLBACK'); throw saveError }
+        return list.all(id)
+      }
       if (controller.signal.aborted) return null
       throw error
     } finally {
+      event.sender.removeListener('destroyed', destroyed)
       active = undefined
     }
   })

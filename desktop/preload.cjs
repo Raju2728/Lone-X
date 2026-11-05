@@ -1,5 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+contextBridge.exposeInMainWorld('loneXStorage', {
+  scan: () => ipcRenderer.invoke('storage:scan'),
+  stop: () => ipcRenderer.invoke('storage:stop'),
+  trash: id => ipcRenderer.invoke('storage:trash', id)
+})
+
 contextBridge.exposeInMainWorld('loneXBrowser', {
   navigate: action => ipcRenderer.invoke('browser:navigate', action),
   open: url => ipcRenderer.invoke('browser:open', url),
@@ -32,6 +38,14 @@ contextBridge.exposeInMainWorld('loneXResources', {
 })
 
 contextBridge.exposeInMainWorld('loneXAI', {
+  chooseAgentFolder: () => ipcRenderer.invoke('ai:agent-folder'),
+  disconnectAgent: () => ipcRenderer.invoke('ai:agent-disconnect'),
+  reviewAgent: input => ipcRenderer.invoke('ai:agent-review', input),
+  onAgentReview: callback => {
+    const listener = (_event, review) => callback(review)
+    ipcRenderer.on('ai:agent-review', listener)
+    return () => ipcRenderer.removeListener('ai:agent-review', listener)
+  },
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),
   modelInventory: () => ipcRenderer.invoke('ai:model-inventory'),

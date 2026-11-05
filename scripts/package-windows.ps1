@@ -51,6 +51,9 @@ try {
                 throw "Ollama blob checksum mismatch for $name"
             }
             Copy-Item -LiteralPath $source -Destination $blobs.FullName
+            if ($layer.mediaType -eq 'application/vnd.ollama.image.license') {
+                Copy-Item -LiteralPath $source -Destination (Join-Path $bundled.FullName ('Qwen2.5-LICENSE-' + $name + '.txt'))
+            }
         }
 
         $output = New-Item -ItemType Directory -Force public/downloads

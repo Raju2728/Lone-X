@@ -7,6 +7,7 @@ import SquishSwitch from './react-bits/SquishSwitch'
 import AIWorkspace from './AIWorkspace'
 import OverviewActivity from './OverviewActivity'
 import Activity from './Activity'
+import { LegalSettings, WebsiteLegalFooter, WebsiteLegalPage } from './LegalPolicies'
 import Projects from './Projects'
 import LocalTerminal from './LocalTerminal'
 import TaskPlanner from './TaskPlanner'
@@ -28,6 +29,7 @@ const pages = [
   { name: 'Terminal', icon: Terminal, detail: 'Run approved Windows PowerShell commands.' },
   { name: 'Activity', icon: History, detail: 'Review local chat usage and recent command results.' },
   { name: 'Settings', icon: Settings, detail: 'Manage your workspace appearance.' },
+  { name: 'Legal & Policies', icon: ShieldCheck, detail: 'Review the terms, privacy policy, and software license.' },
 ] as const
 
 function usePreference(key: string, initial: string) {
@@ -151,7 +153,7 @@ function App() {
             {page.name === 'Settings' && <>
               <section className="launch-panel" aria-label="Workspace tools">
                 <h2>Workspace tools</h2>
-                {pages.slice(2, 6).map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
+                {[...pages.slice(2, 6), pages[7]].map(item => <button className="launch-row" key={item.name} onClick={() => setPage(item)}>
                   <span className="launch-icon"><item.icon size={18} aria-hidden="true" /></span>
                   <span><strong>{item.name}</strong><small>{item.detail}</small></span>
                   <ArrowRight size={16} aria-hidden="true" />
@@ -163,10 +165,16 @@ function App() {
           <div hidden={page.name !== 'Terminal'}><LocalTerminal /></div>
           <div hidden={page.name !== 'Projects'}><Projects /></div>
           {page.name === 'Activity' && <Activity />}
+          {page.name === 'Legal & Policies' && <LegalSettings />}
           <div hidden={!inChat}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></div>
         </div>
       </main>
     </div></AccountGate>
+  }
+
+  const legalPath = location.pathname.replace(/\/$/, '')
+  if (legalPath === '/terms' || legalPath === '/privacy') {
+    return <WebsiteLegalPage name={legalPath === '/terms' ? 'terms' : 'privacy'} />
   }
 
   const showCursorGrid = theme === 'dark' && !reduceMotion
@@ -230,7 +238,7 @@ function App() {
       </section>
       <DesktopDownloads />
     </main>
-    <footer>Developed By Raju · © {new Date().getFullYear()}</footer>
+    <WebsiteLegalFooter />
   </div>
 }
 

@@ -4,6 +4,7 @@ const { registerAI } = require('./ai.cjs')
 const { registerProjects } = require('./projects.cjs')
 const { registerAccount } = require('./account.cjs')
 const { registerTerminal } = require('./terminal.cjs')
+const { registerLegal } = require('./legal.cjs')
 const rendererPath = path.join(__dirname, '../dist/index.html')
 
 function createWindow() {
@@ -25,7 +26,8 @@ function createWindow() {
 app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
   session.defaultSession.setPermissionCheckHandler(() => false)
-  const requireAccount = registerAccount(app, rendererPath)
+  const requireConsent = registerLegal(app, rendererPath)
+  const requireAccount = registerAccount(app, rendererPath, requireConsent)
   registerAI(app, rendererPath, requireAccount)
   registerProjects(rendererPath, requireAccount)
   registerTerminal(app, rendererPath, requireAccount)

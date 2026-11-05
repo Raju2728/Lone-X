@@ -1,5 +1,10 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+contextBridge.exposeInMainWorld('loneXLegal', {
+  status: () => ipcRenderer.invoke('legal:status'),
+  accept: input => ipcRenderer.invoke('legal:accept', input)
+})
+
 contextBridge.exposeInMainWorld('loneXAI', {
   history: id => ipcRenderer.invoke('ai:history', id),
   models: () => ipcRenderer.invoke('ai:models'),

@@ -6,7 +6,7 @@ const path = require('node:path')
 const { readFileSync } = require('node:fs')
 const nodemailer = require('nodemailer')
 
-function registerAccount(app, rendererPath) {
+function registerAccount(app, rendererPath, requireConsent) {
   const db = new DatabaseSync(path.join(app.getPath('userData'), 'account.sqlite'))
   db.exec('CREATE TABLE IF NOT EXISTS account (id INTEGER PRIMARY KEY CHECK (id = 1), email TEXT NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL)')
   db.exec('CREATE TABLE IF NOT EXISTS update_notice (revision TEXT PRIMARY KEY)')
@@ -89,6 +89,7 @@ function registerAccount(app, rendererPath) {
       if (event.senderFrame !== event.sender.mainFrame || url.protocol !== 'file:' || fileURLToPath(url) !== rendererPath) {
         throw new Error('Invalid account request origin.')
       }
+      requireConsent()
       return callback(event.sender, value)
     })
   }
@@ -166,6 +167,7 @@ function registerAccount(app, rendererPath) {
   })
 
   return () => {
+    requireConsent()
     if (expiresAt <= Date.now()) throw new Error('Sign in to Lone X first.')
   }
 }

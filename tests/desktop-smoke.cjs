@@ -92,15 +92,57 @@ app.whenReady().then(async () => {
       window.webContents.once('did-fail-load', (_event, _code, description) => reject(new Error(description)))
     })
   }
-  await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /Sign in/)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /legal agreements/)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXLegal.accept({ revision: 0 })'), /current agreements/)
   window.webContents.openDevTools({ mode: 'detach', activate: false })
   assert.equal(window.webContents.isDevToolsOpened(), false)
+  await window.webContents.executeJavaScript(`
+    (async () => {
+      for (let attempt = 0; attempt < 160 && !document.querySelector('.legal-consent'); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      const gate = document.querySelector('.legal-consent')
+      if (!gate || document.querySelector('.account-panel')) throw new Error('Legal consent must precede account access: ' + document.body.textContent.slice(0, 350))
+      const choices = [...gate.querySelectorAll('input[type=checkbox]')]
+      const submit = gate.querySelector('button[type=submit]')
+      if (choices.length !== 3 || choices.some(input => input.checked) || !submit.disabled) throw new Error('Consent defaults are invalid')
+      const documents = [...gate.querySelectorAll('details')]
+      if (documents.length !== 3 || documents.some(item => !item.querySelector('.legal-copy p'))) throw new Error('Complete documents are missing')
+      choices.slice(0, 2).forEach(input => input.click())
+      if (!submit.disabled) throw new Error('Partial acceptance unlocked the app')
+      choices[2].click()
+      for (let attempt = 0; attempt < 20 && submit.disabled; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      submit.click()
+      for (let attempt = 0; attempt < 100 && !document.querySelector('.account-panel form'); attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      if (!document.querySelector('.account-panel form')) throw new Error('Acceptance did not unlock account access')
+    })()
+  `)
+  const accepted = await window.webContents.executeJavaScript('window.loneXLegal.status()')
+  const legalDb = new DatabaseSync(require('node:path').join(profile, 'legal.sqlite'))
+  const receipt = legalDb.prepare('SELECT receipt FROM consent WHERE revision = ?').get(accepted.revision)
+  assert.deepEqual(JSON.parse(safeStorage.decryptString(Buffer.from(receipt.receipt))), accepted)
+  assert.ok(Number.isFinite(Date.parse(accepted.acceptedAt)))
+  legalDb.prepare('DELETE FROM consent WHERE revision = ?').run(accepted.revision)
+  legalDb.prepare('INSERT INTO consent VALUES (?, ?)').run(accepted.revision + 1, receipt.receipt)
+  assert.equal(await window.webContents.executeJavaScript('window.loneXLegal.status()'), null)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
+  legalDb.prepare('INSERT INTO consent VALUES (?, ?)').run(accepted.revision, receipt.receipt)
+  legalDb.close()
+  await window.loadFile(require('node:path').join(__dirname, '../dist/index.html'), { hash: 'workspace' })
+  assert.deepEqual(await window.webContents.executeJavaScript('window.loneXLegal.status()'), accepted)
+  await assert.rejects(window.webContents.executeJavaScript('window.loneXAI.history()'), /Sign in/)
   await window.webContents.executeJavaScript(`
     (async () => {
       for (let attempt = 0; attempt < 100 && !document.querySelector('.account-panel form'); attempt++) {
         await new Promise(resolve => setTimeout(resolve, 25))
       }
       const form = document.querySelector('.account-panel form')
+      if (document.querySelector('.legal-consent')) throw new Error('Legal consent was requested again')
       for (const [type, value] of [['email', 'raju@example.test'], ['password', 'smoke-password']]) {
         const input = form.querySelector('input[type=' + type + ']')
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, value)

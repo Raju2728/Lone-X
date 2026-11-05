@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { LegalConsent } from './LegalPolicies'
 
 type Credentials = { email: string; password: string }
 const startupMinimumMs = 1800
@@ -15,7 +16,8 @@ declare global {
 }
 
 export default function AccountGate({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<'loading' | 'create' | 'login' | 'reset' | 'open'>('loading')
+  const [mode, setMode] = useState<'loading' | 'legal' | 'create' | 'login' | 'reset' | 'open'>('loading')
+  const [accepted, setAccepted] = useState(false)
   const [emailReady, setEmailReady] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,17 +32,17 @@ export default function AccountGate({ children }: { children: ReactNode }) {
     let timer: number | undefined
     const startedAt = performance.now()
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-    api.status().then(status => {
+    window.loneXLegal.status().then(receipt => receipt ? api.status() : null).then(status => {
       if (!mounted) return
       timer = window.setTimeout(() => {
-        setEmailReady(status.emailReady)
-        setMode(status.signedIn ? 'open' : status.exists ? 'login' : 'create')
-      }, reducedMotion ? 0 : Math.max(0, startupMinimumMs - (performance.now() - startedAt)))
+        setEmailReady(status?.emailReady ?? false)
+        setMode(!status ? 'legal' : status.signedIn ? 'open' : status.exists ? 'login' : 'create')
+      }, reducedMotion || accepted ? 0 : Math.max(0, startupMinimumMs - (performance.now() - startedAt)))
     }).catch(() => {
       if (mounted) setError('Could not load the local account. Restart Lone X and try again.')
     })
     return () => { mounted = false; window.clearTimeout(timer) }
-  }, [api])
+  }, [api, accepted])
 
   useEffect(() => {
     if (mode !== 'open') return
@@ -97,6 +99,7 @@ export default function AccountGate({ children }: { children: ReactNode }) {
   }
 
   if (mode === 'open') return <div className="desktop-session">{message && <p className="account-notice" role="status">{message}</p>}{children}</div>
+  if (mode === 'legal') return <LegalConsent onAccepted={() => { setMode('loading'); setAccepted(true) }} />
   if (mode === 'loading') return <main className="startup-screen">
     <div className="startup-content">
       <div className={error ? 'startup-mark startup-mark-static' : 'startup-mark'} aria-hidden="true">

@@ -130,8 +130,9 @@ THANGLISH
 
 You can type Tamil using English letters. Raju is instructed to reply in
 Thanglish when you use it, while keeping filenames, paths, code and quoted
-file contents unchanged. Qwen3 4B Instruct is recommended for these prompts;
-language quality varies across local models. Permissions and reviews apply.
+file contents unchanged. Thanglish applies to ALL four Chat models:
+Qwen2.5 0.5B, Qwen2.5 Coder 0.5B, Gemma 3 1B and Qwen3 4B Instruct.
+Language quality varies across local models. Permissions and reviews apply.
 Example: Desktop la oru text file create panni "Vanakkam LoneX" nu ezhuthu.
 Use Reply in English if you want to switch the response back to English.
 

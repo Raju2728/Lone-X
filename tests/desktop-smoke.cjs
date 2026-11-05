@@ -97,6 +97,12 @@ global.fetch = (url, options) => {
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
     }
+    if (payload.messages.at(-1)?.content?.startsWith('Language coverage:')) {
+      assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].includes(payload.model))
+      assert.match(payload.messages[0].content, /For THIS reply.*Thanglish/)
+      assert.match(payload.messages[0].content, /Preserve every quoted value and path exactly/)
+      return Promise.resolve(Response.json({ message: { content: 'Nalla irukken. Ungalukku enna help venum?' }, done: true, prompt_eval_count: 10, eval_count: 5 }))
+    }
     if (payload.model === 'gemma3:1b') {
       assert.match(payload.messages[0].content, /Thanglish/)
       assert.deepEqual(payload.messages.at(-1), { role: 'user', content: 'Local Gemma test' })
@@ -454,6 +460,12 @@ async function runSmoke() {
     { limit: 100000, used: 17 }, { limit: 1000000, used: 17 }
   ])
   assert.ok(usage.limits.every(item => item.resetsAt > Date.now()))
+  for (const [index, model] of ['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].entries()) {
+    const result = await window.webContents.executeJavaScript('window.loneXAI.send(' + JSON.stringify({ model, text: 'Language coverage: Enna epdi irukku? Thanglish la sollu.', chatId: 'language-' + index }) + ')')
+    assert.match(result.at(-1).content, /Nalla irukken/)
+    await window.webContents.executeJavaScript('window.loneXAI.deleteChat(' + JSON.stringify('language-' + index) + ')')
+  }
+  console.log('Shared Thanglish guidance passed for all four Chat models.')
   console.log('Gemma 3 local Ollama streaming passed.')
   console.log('Fixed Qwen Coder download and model allowlist passed.')
   const plan = await window.webContents.executeJavaScript("window.loneXAI.plan('Inspect project')")
@@ -947,7 +959,8 @@ async function runSmoke() {
     storageFs.rmSync(storageFolder, { recursive: true, force: true })
   }
   console.log('Selected-folder storage scan, linked-path protection, cancellation, stale review and approved recycling passed.')
-  const agentFolder = storageFs.mkdtempSync(storagePath.join(__dirname, '../.agent-ipc-'))
+  const agentFixtureBase = storageFs.realpathSync(require('node:os').tmpdir())
+  const agentFolder = storageFs.mkdtempSync(storagePath.join(agentFixtureBase, 'lone-x-agent-ipc-'))
   const agentPicker = dialog.showOpenDialog
   const agentConfirm = dialog.showMessageBox
   const originalDesktop = app.getPath('desktop')
@@ -1064,8 +1077,8 @@ async function runSmoke() {
     dialog.showOpenDialog = agentPicker
     dialog.showMessageBox = agentConfirm
     app.setPath('desktop', originalDesktop)
-    assert.equal(storagePath.dirname(storagePath.resolve(agentFolder)), storagePath.resolve(__dirname, '..'))
-    storageFs.rmSync(agentFolder, { recursive: true, force: true })
+    assert.equal(storagePath.dirname(storagePath.resolve(agentFolder)), agentFixtureBase)
+    storageFs.rmSync(agentFolder, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
   console.log('Qwen3 download, Chat agent tool dispatch, rendered change review and approved file creation passed.')
   const quotaDb = new DatabaseSync(require('node:path').join(profile, 'conversation.sqlite'))

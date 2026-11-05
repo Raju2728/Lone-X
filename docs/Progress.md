@@ -114,6 +114,8 @@ The Windows packager now embeds a seven-size Lone X logo icon in the executable 
 
 Regular Chat and Agent prompts share Thanglish guidance with per-turn language preference, preservation of quoted values/paths/code and an explicit English override. Thanglish Desktop commands use the same native scope and change-review flow. A live Qwen3 Instruct request created WelcomeThanglish.txt with exact Vanakkam LoneX content and a Thanglish response (2,495 tokens). Smaller models may have weaker language quality. Pre-tool model narration is withheld so it cannot announce success before the tool outcome is known.
 
+Thanglish is shared across all four Chat models: Qwen2.5 0.5B, Qwen2.5 Coder 0.5B, Gemma 3 1B and Qwen3 4B Instruct. Model descriptions and the Windows guide now state this explicitly. Desktop integration checks verify each model's regular Chat request receives the same Thanglish response guidance. This confirms application routing; language quality still depends on the selected model.
+
 Verification on 5 November 2026: the production renderer build, full Windows desktop smoke suite, five token-window tests and resource API test passed. The browser tests use isolated local HTTPS fixtures; resource tests use simulated storage. Source publication follows the Continue Next workflow. The founder subsequently authorized publishing this Beta while a real clean-Windows software installation test remains outstanding.
 
 ## Local AI usage windows

@@ -14,7 +14,7 @@ async function projectFile(folder, name, limit) {
     if (error.code !== 'ENOENT') throw error
   })
   if (!stat) return null
-  if (!stat.isFile() || stat.size > limit || await realpath(filename) !== filename) throw new Error('Invalid project file: ' + name)
+  if (!stat.isFile() || stat.nlink > 1 || stat.size > limit || await realpath(filename) !== filename) throw new Error('Invalid project file: ' + name)
   const file = await readFile(filename)
   if (file.length > limit) throw new Error('Project file exceeds the size limit: ' + name)
   return file

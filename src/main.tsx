@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Cpu, Download, ArrowRight, ArrowUpRight, Boxes, Folder, History, LayoutDashboard, ListChecks, MessageSquare, Moon, Settings, ShieldCheck, Sun, Terminal } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -6,7 +6,7 @@ import FlipCard from './react-bits/FlipCard'
 import SquishSwitch from './react-bits/SquishSwitch'
 import UsageLimits from './UsageLimits'
 import Storage from './Storage'
-import AIWorkspace from './AIWorkspace'
+const AIWorkspace = lazy(() => import('./AIWorkspace'))
 import OverviewActivity from './OverviewActivity'
 import Activity from './Activity'
 import Resources from './Resources'
@@ -14,7 +14,7 @@ import LocalModels from './LocalModels'
 import Software from './Software'
 import Automation from './Automation'
 import { LegalSettings, WebsiteLegalFooter, WebsiteLegalPage } from './LegalPolicies'
-import Projects from './Projects'
+const Projects = lazy(() => import('./Projects'))
 import LocalTerminal from './LocalTerminal'
 import TaskPlanner from './TaskPlanner'
 import AccountGate from './AccountGate'
@@ -56,7 +56,7 @@ const capabilities = [
 ]
 
 const shippedFeatures = [
-  { icon: MessageSquare, title: 'Local AI, your choice', detail: 'Bundled Qwen2.5 chat without an API key. Download Qwen2.5 Coder, Gemma 3 or Qwen3 Instruct from the app. English and Thanglish guidance works across all four models; quality varies.' },
+  { icon: MessageSquare, title: 'Local AI, your choice', detail: 'Bundled Qwen2.5 chat without an API key. Download Qwen2.5 Coder, Gemma 3 or Qwen3 Instruct from the app. English and Thanglish guidance works across all five models; quality varies.' },
   { icon: Folder, title: 'A hands-on file agent', detail: 'Ask Raju to create folders, read or edit supported text files, and recycle files. Choose a folder or approve session-only PC-wide access. Review each change; edits keep backups.' },
   { icon: ShieldCheck, title: 'You review the action', detail: 'See file destinations, proposed content and project commands before approving. Disconnect agent access when finished. Windows permissions and protected-path checks apply.' },
   { icon: History, title: 'Conversations that stay local', detail: 'Reopen or delete chats, keep local drafts, and follow usage limits. Saved messages older than 30 days are pruned when the app runs.' },
@@ -178,7 +178,7 @@ function App() {
           </>}
           <div hidden={page.name !== 'Task monitor'}><TaskPlanner /></div>
           <div hidden={page.name !== 'Terminal'}><LocalTerminal /></div>
-          <div hidden={page.name !== 'Projects'}><Projects /></div>
+          <div hidden={page.name !== 'Projects'}><Suspense fallback={<p role="status">Loading Projects…</p>}><Projects /></Suspense></div>
           {page.name === 'Activity' && <Activity />}
           {page.name === 'Resources' && <Resources />}
           {page.name === 'Local models' && <LocalModels />}
@@ -186,7 +186,7 @@ function App() {
           {page.name === 'Software' && <Software />}
           {page.name === 'Automation' && <Automation />}
           {page.name === 'Storage & files' && <Storage openProjects={() => setPage(pages[2])} />}
-          <div hidden={!inChat}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></div>
+          <div hidden={!inChat}><Suspense fallback={<p role="status">Loading Chat…</p>}><AIWorkspace active={inChat} draft={draft} setDraft={setDraft} /></Suspense></div>
         </div>
       </main>
     </div></AccountGate>

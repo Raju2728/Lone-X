@@ -5,3 +5,4 @@ dist/
 !.env.example
 
 public/downloads/
+test-artifacts/

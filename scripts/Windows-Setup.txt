@@ -4,7 +4,8 @@ LONE X - WINDOWS SETUP
 2. Right-click the ZIP, choose Extract All, and select a folder you can write to.
 3. Open the extracted Lone X folder and double-click Lone X.exe.
    Keep the resources folder and the other extracted files beside Lone X.exe.
-4. On first launch, create your local account with an email address and a
+4. On first launch, review and accept the legal documents, then create your
+   local account with an email address and a
    password of at least 8 characters. Sign-in lasts for three days on this PC.
 5. Select Chat in the sidebar and send a message to Raju. The first response
    may take longer while the bundled model loads.
@@ -17,15 +18,17 @@ Chat history is stored on this PC and expires after 30 days.
 
 OPTIONAL MODELS
 
-Open the model picker beside Send in Chat. Select Qwen2.5 Coder 0.5B or
-Gemma 3 1B and click Download if prompted. Internet is needed for the first
-download. Afterward, both models run offline without an API key.
+Open the model picker beside Send in Chat. Select Qwen2.5 Coder 0.5B,
+Gemma 3 1B, Gemma 3 4B or Qwen3 4B Instruct and click Download if prompted.
+Internet is needed for the first download. Afterward, installed models run
+offline without an API key. Agent mode uses Qwen3 4B Instruct.
 
 For a separate Ollama installation, start Ollama and run these commands
 in PowerShell for the models you want:
   ollama pull qwen2.5:0.5b
   ollama pull qwen2.5-coder:0.5b
   ollama pull gemma3:1b
+  ollama pull gemma3:4b
   ollama pull qwen3:4b-instruct
   ollama list
 
@@ -130,8 +133,8 @@ THANGLISH
 
 You can type Tamil using English letters. Raju is instructed to reply in
 Thanglish when you use it, while keeping filenames, paths, code and quoted
-file contents unchanged. Thanglish applies to ALL four Chat models:
-Qwen2.5 0.5B, Qwen2.5 Coder 0.5B, Gemma 3 1B and Qwen3 4B Instruct.
+file contents unchanged. Thanglish applies to ALL five Chat models:
+Qwen2.5 0.5B, Qwen2.5 Coder 0.5B, Gemma 3 1B, Gemma 3 4B and Qwen3 4B Instruct.
 Language quality varies across local models. Permissions and reviews apply.
 Example: Desktop la oru text file create panni "Vanakkam LoneX" nu ezhuthu.
 Use Reply in English if you want to switch the response back to English.
@@ -156,3 +159,20 @@ LEGAL AGREEMENTS
 Read and accept the versioned Terms, Privacy Policy and EULA on first launch.
 A significant policy update requires renewed acceptance. These documents are
 always available in Settings > Legal & Policies.
+
+NATURAL THANGLISH CONVERSATION
+
+Use Replies: Thanglish in Chat to request conversational Tamil written in
+English letters for everyday questions, explanations and supported file tasks.
+Auto follows your message and short conversation follow-ups; English selects
+English replies. An explicit request in your message takes priority. The
+preference is saved on this PC. This changes reply style, not tool permissions
+or the available actions. Language accuracy varies and is not guaranteed to
+match a hosted service. Gemma 3 4B is an optional larger model (about 3.3 GB),
+not part of the default-model ZIP.
+
+For a custom model folder, set LONEX_OLLAMA_MODEL_DIR to an absolute local
+folder before starting Lone X. The app starts its own loopback runtime using
+that folder; no standalone model store is modified. Packaged builds use their
+bundled runtime. Development builds require an installed Ollama runtime when
+using this override. Uninstall does not remove an external custom model folder.

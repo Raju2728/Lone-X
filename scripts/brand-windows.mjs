@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import * as ResEdit from 'resedit'
+import { flipFuses, FuseVersion, FuseV1Options } from '@electron/fuses'
 const iconBytes = item => Buffer.from(item.isRaw() ? item.bin : item.generate())
 
 export async function verifyWindowsIcon(executable, iconPath) {
@@ -34,6 +35,12 @@ export async function brandWindowsExecutable(source, destination, iconPath) {
   }
   resources.outputResource(image)
   await fs.writeFile(destination, Buffer.from(image.generate()))
+  await flipFuses(destination, {
+    version: FuseVersion.V1,
+    [FuseV1Options.RunAsNode]: false,
+    [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+    [FuseV1Options.EnableNodeCliInspectArguments]: false
+  })
   return verifyWindowsIcon(destination, iconPath)
 }
 

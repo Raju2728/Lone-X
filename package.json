@@ -5,7 +5,7 @@
   "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/generate-notices.mjs && tsc --noEmit && vite build",
     "desktop": "npm run build && electron .",
     "test:desktop": "electron tests/desktop-smoke.cjs",
     "test:providers": "node tests/live-providers.cjs"
@@ -20,13 +20,15 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@electron/fuses": "^2.1.3",
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "electron": "^42.0.0",
+    "electron": "^45.2.3",
     "resedit": "^3.1.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.8.0",
     "vite": "^6.0.0"
-  }
+  },
+  "license": "MIT"
 }

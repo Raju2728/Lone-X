@@ -58,7 +58,7 @@ global.fetch = (url, options) => {
   if (url === 'http://127.0.0.1:11434/api/pull') {
     pullRequests++
     const { model, stream } = JSON.parse(options.body)
-    assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].includes(model))
+    assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'gemma3:4b', 'qwen3:4b-instruct'].includes(model))
     assert.equal(stream, true)
     const encoder = new TextEncoder()
     return Promise.resolve(new Response(new ReadableStream({
@@ -97,8 +97,15 @@ global.fetch = (url, options) => {
     if (payload.options.num_predict === 24) {
       return Promise.resolve(new Response(JSON.stringify({ message: { content: 'Desktop Chat Testing' }, done: true, prompt_eval_count: 5, eval_count: 2 })))
     }
+    if (payload.messages.at(-1)?.content?.startsWith('Language preference:')) {
+      if (payload.messages.at(-1).content.includes('Reply in English')) {
+        assert.match(payload.messages[0].content, /explicitly requested English/)
+        assert.doesNotMatch(payload.messages[0].content, /For THIS reply/)
+      } else assert.match(payload.messages[0].content, /For THIS reply.*Thanglish/)
+      return Promise.resolve(Response.json({ message: { content: 'Preference fixture reply' }, done: true, prompt_eval_count: 10, eval_count: 5 }))
+    }
     if (payload.messages.at(-1)?.content?.startsWith('Language coverage:')) {
-      assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].includes(payload.model))
+      assert.ok(['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'gemma3:4b', 'qwen3:4b-instruct'].includes(payload.model))
       assert.match(payload.messages[0].content, /For THIS reply.*Thanglish/)
       assert.match(payload.messages[0].content, /Preserve every quoted value and path exactly/)
       return Promise.resolve(Response.json({ message: { content: 'Nalla irukken. Ungalukku enna help venum?' }, done: true, prompt_eval_count: 10, eval_count: 5 }))
@@ -116,7 +123,7 @@ global.fetch = (url, options) => {
         assert.match(input.testOutput, /41 !== 42/)
         assert.equal(input.source, 'module.exports = value => value - 1')
         return Promise.resolve(new Response(JSON.stringify({ message: { content: JSON.stringify({
-          diagnosis: 'The function incorrectly subtracts one.', before: 'value - 1', after: 'value'
+           diagnosis: 'The function incorrectly subtracts one.', before: 'value - 1', after: 'value'
         }) }, done: true })))
       }
       const content = payload.messages.at(-1).content === 'Invalid plan fixture'
@@ -229,15 +236,20 @@ async function runSmoke() {
       const pathname = new URL(request.url).pathname
       if (pathname === '/slow') return new Promise(resolve => setTimeout(() => resolve(new Response('Delayed fixture')), 800))
       if (pathname === '/unavailable') return new Response('Service unavailable', { status: 503 })
+      if (pathname === '/redirect-canonical') return new Response(null, { status: 301, headers: { Location: 'https://www.browser.example.test/canonical-page' } })
+      if (pathname === '/redirect-chain') return new Response(null, { status: 301, headers: { Location: 'https://www.browser.example.test/redirect-double-www' } })
+      if (pathname === '/redirect-double-www') return new Response(null, { status: 301, headers: { Location: 'https://www.www.browser.example.test/not-approved' } })
+      if (pathname === '/redirect-blocked') return new Response(null, { status: 301, headers: { Location: 'https://outside.example.test/blocked-page' } })
       return new Response('<!doctype html><title>Browser fixture</title><a id="same" href="/next">Same origin</a><a id="external" href="https://outside.example.test/page">Other origin</a>', {
         headers: { 'Content-Type': 'text/html' }
       })
     })
   })
+  const initialWindow = new Promise(resolve => app.once('browser-window-created', (_event, browser) => resolve(browser)))
   require('../desktop/main.cjs')
   subprocess.execFile = realExecFile
   await app.whenReady()
-  const window = BrowserWindow.getAllWindows()[0]
+  const window = await initialWindow
   window.webContents.on('console-message', event => { if (event.level === 'error') console.error('Renderer:', event.message) })
   if (window.webContents.isLoading()) {
     await new Promise((resolve, reject) => {
@@ -282,7 +294,7 @@ async function runSmoke() {
   const accepted = await window.webContents.executeJavaScript('window.loneXLegal.status()')
   const legalDb = new DatabaseSync(require('node:path').join(profile, 'legal.sqlite'))
   const receipt = legalDb.prepare('SELECT receipt FROM consent WHERE revision = ?').get(accepted.revision)
-  assert.deepEqual(JSON.parse(safeStorage.decryptString(Buffer.from(receipt.receipt))), accepted)
+  assert.deepEqual(JSON.parse((await safeStorage.decryptStringAsync(Buffer.from(receipt.receipt))).result), accepted)
   assert.ok(Number.isFinite(Date.parse(accepted.acceptedAt)))
   legalDb.prepare('DELETE FROM consent WHERE revision = ?').run(accepted.revision)
   legalDb.prepare('INSERT INTO consent VALUES (?, ?)').run(accepted.revision + 1, receipt.receipt)
@@ -290,7 +302,7 @@ async function runSmoke() {
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
   legalDb.prepare('INSERT INTO consent VALUES (?, ?)').run(accepted.revision, receipt.receipt)
   const outdated = { ...accepted, versions: { ...accepted.versions, privacy: 'outdated' } }
-  legalDb.prepare('UPDATE consent SET receipt = ? WHERE revision = ?').run(safeStorage.encryptString(JSON.stringify(outdated)), accepted.revision)
+  legalDb.prepare('UPDATE consent SET receipt = ? WHERE revision = ?').run(await safeStorage.encryptStringAsync(JSON.stringify(outdated)), accepted.revision)
   assert.equal(await window.webContents.executeJavaScript('window.loneXLegal.status()'), null)
   await assert.rejects(window.webContents.executeJavaScript('window.loneXAccount.status()'), /legal agreements/)
   legalDb.prepare('UPDATE consent SET receipt = ? WHERE revision = ?').run(receipt.receipt, accepted.revision)
@@ -340,9 +352,27 @@ async function runSmoke() {
   for (const url of ['file:///C:/Windows/win.ini', 'javascript:alert(1)', 'http://example.test', 'https://user:secret@example.test']) {
     await assert.rejects(window.webContents.executeJavaScript('window.loneXBrowser.open(' + JSON.stringify(url) + ')'), /HTTPS/)
   }
+  // Bare hostnames without a dot are rejected
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXBrowser.open('localhost')"), /complete website/)
+  // Bare hostnames with a dot are normalised to HTTPS and open successfully
+  dialog.showMessageBox = async () => ({ response: 1 })
+  assert.equal((await window.webContents.executeJavaScript("window.loneXBrowser.open('browser.example.test/page')")).status, 'Ready')
+  assert.equal(browserWindows.at(-1).webContents.getURL(), 'https://browser.example.test/page')
+  await window.webContents.executeJavaScript('window.loneXBrowser.close()')
+  // Approved canonical www redirect
+  assert.equal((await window.webContents.executeJavaScript("window.loneXBrowser.open('https://browser.example.test/redirect-canonical')")).status, 'Ready')
+  assert.equal(browserWindows.at(-1).webContents.getURL(), 'https://www.browser.example.test/canonical-page')
+  await window.webContents.executeJavaScript('window.loneXBrowser.close()')
+  // Blocked arbitrary domain redirect
+  assert.equal((await window.webContents.executeJavaScript("window.loneXBrowser.open('https://browser.example.test/redirect-chain')")).status, 'Navigation blocked')
+  await window.webContents.executeJavaScript('window.loneXBrowser.close()')
+  assert.equal((await window.webContents.executeJavaScript("window.loneXBrowser.open('https://browser.example.test/redirect-blocked')")).status, 'Navigation blocked')
+  await window.webContents.executeJavaScript('window.loneXBrowser.close()')
+  console.log('Bare-hostname normalisation, approved canonical redirect, and blocked arbitrary redirect passed.')
+  const browserCountBefore = browserWindows.length
   dialog.showMessageBox = async () => ({ response: 0 })
   assert.equal((await window.webContents.executeJavaScript("window.loneXBrowser.open('https://browser.example.test/page')")).status, 'Cancelled')
-  assert.equal(browserWindows.length, 0)
+  assert.equal(browserWindows.length, browserCountBefore)
   dialog.showMessageBox = async () => ({ response: 1 })
   await assert.rejects(window.webContents.executeJavaScript("window.loneXBrowser.navigate('reload')"), /Open an approved website/)
   await assert.rejects(window.webContents.executeJavaScript("window.loneXBrowser.navigate('https://outside.example.test')"), /Choose Back/)
@@ -465,12 +495,19 @@ async function runSmoke() {
     { limit: 100000, used: 17 }, { limit: 1000000, used: 17 }
   ])
   assert.ok(usage.limits.every(item => item.resetsAt > Date.now()))
-  for (const [index, model] of ['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'qwen3:4b-instruct'].entries()) {
+  for (const [index, model] of ['qwen2.5:0.5b', 'qwen2.5-coder:0.5b', 'gemma3:1b', 'gemma3:4b', 'qwen3:4b-instruct'].entries()) {
     const result = await window.webContents.executeJavaScript('window.loneXAI.send(' + JSON.stringify({ model, text: 'Language coverage: Enna epdi irukku? Thanglish la sollu.', chatId: 'language-' + index }) + ')')
     assert.match(result.at(-1).content, /Nalla irukken/)
     await window.webContents.executeJavaScript('window.loneXAI.deleteChat(' + JSON.stringify('language-' + index) + ')')
   }
-  console.log('Shared Thanglish guidance passed for all four Chat models.')
+  console.log('Shared Thanglish guidance passed for all five Chat models.')
+  await assert.rejects(window.webContents.executeJavaScript("window.loneXAI.send({model:'qwen2.5:0.5b',text:'test',replyLanguage:'invalid'})"), /Choose Auto/)
+  for (const [index, text] of ['Language preference: Explain a variable simply.', 'Language preference: Reply in English.'].entries()) {
+    const input = { model: 'qwen2.5:0.5b', text, replyLanguage: 'thanglish', chatId: 'language-pref-' + index }
+    const result = await window.webContents.executeJavaScript('window.loneXAI.send(' + JSON.stringify(input) + ')')
+    assert.equal(result.at(-1).content, 'Preference fixture reply')
+    await window.webContents.executeJavaScript('window.loneXAI.deleteChat(' + JSON.stringify(input.chatId) + ')')
+  }
   console.log('Gemma 3 local Ollama streaming passed.')
   console.log('Fixed Qwen Coder download and model allowlist passed.')
   const plan = await window.webContents.executeJavaScript("window.loneXAI.plan('Inspect project')")
@@ -798,6 +835,14 @@ async function runSmoke() {
       document.querySelectorAll('aside nav button')[1].click()
       await waitFor(() => !document.querySelector('#draft').closest('[hidden]'))
       const workspace = document.querySelector('[aria-label="AI conversation"]')
+      const language = workspace.querySelector('select[aria-label="Reply language"]')
+      if (!language || language.value !== 'auto') throw new Error('Default reply language is missing')
+      language.value = 'thanglish'
+      language.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitFor(() => localStorage.getItem('lone-x-reply-language') === 'thanglish')
+      language.value = 'auto'
+      language.dispatchEvent(new Event('change', { bubbles: true }))
+      await waitFor(() => localStorage.getItem('lone-x-reply-language') === 'auto')
       const buttons = () => [...workspace.querySelectorAll('button')]
       const picker = workspace.querySelector('.prompt-bar button[aria-label="Choose model"]')
       picker.click()
@@ -806,7 +851,7 @@ async function runSmoke() {
       options().find(option => option.textContent.includes('Gemma 3 1B')).click()
       await waitFor(() => picker.textContent.includes('Gemma 3 1B') && workspace.querySelector('.ai-model-actions')?.textContent.includes('Download Gemma 3 1B'))
       picker.click()
-      await waitFor(() => options().length === 4)
+      await waitFor(() => options().length === 5)
       if (!options().find(option => option.textContent.includes('Gemma 3 1B')).matches('[aria-selected=true]')) throw new Error('Selected model was not marked')
       options().find(option => option.textContent.includes('Qwen2.5 0.5B')).click()
       await waitFor(() => picker.textContent.includes('Qwen2.5 0.5B'))
@@ -1106,7 +1151,7 @@ async function runSmoke() {
   const account = new DatabaseSync(require('node:path').join(profile, 'account.sqlite'), { readOnly: true })
   const saved = account.prepare('SELECT encrypted FROM login_session WHERE id = 1').get()
   account.close()
-  const expiresAt = Number(safeStorage.decryptString(Buffer.from(saved.encrypted)))
+  const expiresAt = Number((await safeStorage.decryptStringAsync(Buffer.from(saved.encrypted))).result)
   const remaining = expiresAt - Date.now()
   assert.ok(remaining > 3 * 86400000 - 60000 && remaining <= 3 * 86400000)
   const realNow = Date.now

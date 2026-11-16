@@ -403,7 +403,7 @@ textarea { display: block; width: 100%; min-height: 145px; padding: 12px; border
 @media (prefers-reduced-motion: reduce) { .usage-limit__track > div { transition: none; } }
 .ai-console-bar { flex-wrap: wrap; }
 .agent-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.agent-controls button { font-size: 12px; }
+.agent-controls button, .agent-controls select { font-size: 12px; color: inherit; }
 .agent-folder { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
 .agent-review { max-height: 50vh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
 .agent-review > p { font-size: 12px; color: var(--muted); }

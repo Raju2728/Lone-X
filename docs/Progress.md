@@ -1,5 +1,53 @@
 # Development progress
 
+## Maintenance increment — 16 November 2026
+
+Following Raju's request to move forward, addressed the next Medium maintenance
+items while retaining the documented clean-Windows and model-quality gaps.
+Session/consent encryption now uses Electron's async protected-storage APIs.
+Startup waits for stored receipt/session validation before creating the app
+window. Consent gates still compare the current stored ciphertext against the
+validated receipt; missing, changed or outdated consent is rejected. Key-rotation
+requests re-encrypt valid records. Account operations are serialized so password
+reset and login cannot race asynchronous session writes.
+
+Chat and Projects are split into lazy chunks, reducing the website's initial
+JavaScript without unmounting their desktop state during navigation. README,
+model setup and packaged instructions now reflect actual Beta capabilities,
+five models, first-run consent and the intentionally deferred cloud service.
+Build, protected-storage unit checks and full Electron integration pass. Existing
+React Bits directive/sourcemap warnings remain nonfatal. No claim is made that
+Thanglish fluency, live SMTP, full accessibility, real clean-OS installation or
+general coding reliability is complete.
+
+## Priority remediation — 16 November 2026 (local)
+
+Raju approved resolving High attention items before Medium items and new scope.
+The browser now normalizes bare domains and fixes the allowed HTTPS host pair
+at approval time, including its explicit www counterpart. Redirects cannot grow
+that set; a repeated-www redirect regression passes. UI/native approval wording
+now matches this boundary. Real disposable browser checks opened google.com
+and youtube.com with their expected titles and Ready status. This does not
+certify sign-in, video playback or regional consent pages.
+
+The coding model context increased from 4096 to 8192 tokens. The agent stops
+repeated failed commands when no file change occurred. A real Qwen3 Instruct
+Chat-agent check read a disposable project's tests/source, ran failing tests,
+edited only index.cjs with review and a backup, and reran both tests successfully;
+an independent Node rerun also passed. Earlier attempts failed or repeated
+commands, and the separate one-shot repair proposal still produced incorrect
+code in live testing. Do not claim general repair reliability is solved.
+The project proposal now prefers the installed coding agent over Gemma 1B and
+retains exact-snippet validation, full-file review, snapshot checks and backup.
+Invalid/no-op proposals are refused. A trial full-source proposal format did
+not establish reliable repairs and was discarded.
+
+Security regressions and executable hardening checks pass; production dependency
+audits for root/backend report no known vulnerabilities. A candidate ZIP is built
+locally for verification; it is not a published release. Clean-Windows acceptance
+is still blocked by the absence of a supplied Windows ISO/VM. The previously
+documented fresh-OS test plan remains required. No cloud billing was activated.
+
 ## Beta publication — 5 November 2026
 
 The founder authorized publication of the current code and replacement Windows ZIP. This supersedes the earlier release hold. The build remains Lone X (Beta); unfinished milestone acceptance checks, including clean-Windows software installation, remain open. The release retains the stable Lone-X-Windows.zip filename and includes the setup guide, uninstall scripts, selected-folder Chat agent, on-demand Qwen3 4B Instruct, storage review and fading responses.
@@ -134,3 +182,39 @@ Terms 1.1, Privacy 1.5 and EULA 1.1 (updated 2026-11-05, consent revision 6) dis
 Windows Shell extraction of the previously published executable returned the actual Lone X logo. The new window uses the PNG for its runtime icon and explicit Windows taskbar/relaunch details referencing the ICO. The ZIP includes a dynamic Create-Desktop-Shortcut.cmd/.ps1 helper that points to the actual extraction folder, assigns Lone-X.ico, and asks before overwriting an existing shortcut. Existing pinned icons may need unpinning and repinning; old extracted copies are not silently replaced. Setup instructions cover this.
 
 Production build, full desktop integration and branded-executable/uninstaller checks passed before publication. A real clean-Windows software install remains unverified; this release remains Beta. Publication evidence is reported with the release.
+
+## Security and licensing audit — 5 November 2026 (local changes)
+
+Completed a targeted source/dependency review, pattern scan of Git history and
+local Defender scan of the previously published ZIP. Fixed the reproduced
+hard-link agent scope bypass and oversized AI-stream availability risk. Updated
+Electron from 42.11.18 to supported 45.2.3 and disabled Node/environment/debug
+launch fuses in branded builds. Added web security headers and SECURITY.md.
+The renderer build, desktop integration, backend fixture test, agent/token/model/
+uninstall checks and branded executable injection checks passed. Downloads,
+caches and fixtures were kept on E:. This is not proof of no past breach.
+
+The founder confirmed Rajesh .T, Coimbatore, Tamil Nadu, India, and chose MIT for
+original code. LICENSE, policy revision 7 (Terms 1.2, Privacy 1.6, EULA 2.0),
+README and generated dependency notices reflect this. React Bits retains MIT
+plus Commons Clause; the whole bundle is not exclusively MIT. A technical legal
+review is documented; no lawyer's sign-off or certification has been obtained.
+
+Clean Windows testing remains blocked: only a Kali VirtualBox VM exists and the
+founder has no Windows ISO. Microsoft evaluation registration/ISO is needed for
+the E:-stored clean VM test described in Clean-Windows-Test.md. The audit fixes
+and legal changes are local and have not been pushed or released. See
+Security-Review-2026-11-05.md and Legal-Review-2026-11-05.md for evidence and limits.
+
+## Natural Thanglish follow-up — local review build
+
+Expanded shared language handling beyond file command examples; added a saved
+Auto / Thanglish / English reply choice, conversational context and per-message
+overrides. Added optional Gemma 3 4B and downloaded/tested it in an E: cache.
+The model still did not demonstrate ChatGPT-level Thanglish fluency; actual
+results and limits are recorded in Thanglish-Review.md. A separate local model
+folder override lets the app reuse that cache without changing standalone C:
+model storage. Language/agent/runtime tests, build and full desktop checks
+passed. This does not implement unsupported file operations or remove reviews.
+A local candidate ZIP is prepared separately; no push/deployment was requested
+for this change and the public release remains unchanged.

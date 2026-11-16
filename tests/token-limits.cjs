@@ -7,6 +7,16 @@ const path = require('node:path')
 const { tokenLimits, windows } = require('../desktop/token-limits.cjs')
 const { streamReply } = require('../desktop/ai.cjs')
 
+test('malformed local AI streams cannot grow frames or response output without a bound', async () => {
+  const encode = text => new TextEncoder().encode(text)
+  const request = text => async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(encode(text)); controller.close() } }))
+  await assert.rejects(streamReply('qwen2.5:0.5b', [], () => {}, undefined, request('x'.repeat(128 * 1024 + 1))), /oversized response frame/)
+  const line = JSON.stringify({ message: { content: 'a'.repeat(64 * 1024) }, done: false }) + '\n'
+  let shown = 0
+  await assert.rejects(streamReply('qwen2.5:0.5b', [], text => { shown += text.length }, undefined, request(line.repeat(17))), /output limit/)
+  assert.equal(shown, 1024 * 1024)
+})
+
 test('independent windows start on first request and survive restarts', () => {
   const folder = mkdtempSync(path.join(tmpdir(), 'lone-x-limits-'))
   const filename = path.join(folder, 'usage.sqlite')

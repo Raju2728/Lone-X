@@ -1,14 +1,7 @@
 const { BrowserWindow, dialog, ipcMain, session } = require('electron')
 const { randomUUID } = require('node:crypto')
 const { fileURLToPath } = require('node:url')
-
-function approvedAddress(value) {
-  if (typeof value !== 'string' || value.length > 2048) throw new Error('Enter an HTTPS website address.')
-  let url
-  try { url = new URL(value) } catch { throw new Error('Enter a complete HTTPS website address.') }
-  if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Use an HTTPS address without embedded credentials.')
-  return url
-}
+const { approvedAddress, approvedOrigins } = require('./browser-address.cjs')
 
 function registerBrowser(rendererPath, requireAccount) {
   const workspaces = new Map()
@@ -49,7 +42,12 @@ function registerBrowser(rendererPath, requireAccount) {
     const index = history.getActiveIndex() + offset
     if (offset && (index < 0 || index >= history.length())) throw new Error('No page is available in that direction.')
     const destination = offset ? history.getEntryAtIndex(index)?.url : contents.getURL()
-    if (!destination || approvedAddress(destination).origin !== current.origin) throw new Error('Navigation is outside the approved website.')
+    if (!destination) throw new Error('Navigation is outside the approved website.')
+    let destinationUrl
+    try { destinationUrl = approvedAddress(destination) } catch { throw new Error('Navigation is outside the approved website.') }
+    if (!current.allowedOrigins.includes(destinationUrl.origin)) {
+      throw new Error('Navigation is outside the approved website.')
+    }
     current.cancelled = false
     current.status = 'Loading'
     if (offset) history.goToIndex(index)
@@ -81,7 +79,7 @@ function registerBrowser(rendererPath, requireAccount) {
     if (approvals.has(sender) || previous?.status === 'Loading') {
       throw new Error('Stop or finish the current browser request first.')
     }
-    const current = { status: 'Awaiting approval', url: target.href, origin: target.origin, cancelled: false, window: null }
+    const current = { status: 'Awaiting approval', url: target.href, allowedOrigins: approvedOrigins(target), cancelled: false, window: null }
     const parent = BrowserWindow.fromWebContents(sender)
     if (!parent) throw new Error('The desktop window is unavailable.')
     approvals.set(sender, current)
@@ -89,8 +87,8 @@ function registerBrowser(rendererPath, requireAccount) {
     try { choice = await dialog.showMessageBox(parent, {
       type: 'question', buttons: ['Cancel', 'Open website'], defaultId: 0, cancelId: 0,
       message: 'Open this website in the Lone X browser?',
-      detail: target.href + '\n\nThe site receives normal browser requests. Navigation stays within ' + target.origin +
-        '. Open another origin through this approval screen. Browser data is kept in a separate temporary session.'
+      detail: target.href + '\n\nThe site receives normal browser requests. Navigation is limited to these HTTPS origins: ' + current.allowedOrigins.join(', ') +
+        '. Other addresses require a separate approval. Browser data is kept in a separate temporary session.'
     }) } finally { approvals.delete(sender) }
     if (choice.response !== 1 || current.cancelled || sender.isDestroyed()) {
       return { status: 'Cancelled', url: target.href }
@@ -118,7 +116,10 @@ function registerBrowser(rendererPath, requireAccount) {
     contents.setWindowOpenHandler(() => ({ action: 'deny' }))
     function guard(event, destination) {
       let allowed = false
-      try { allowed = approvedAddress(destination).origin === target.origin } catch {}
+      try {
+        const destUrl = approvedAddress(destination)
+        allowed = current.allowedOrigins.includes(destUrl.origin)
+      } catch {}
       if (!allowed) {
         event.preventDefault()
         current.status = 'Navigation blocked'
@@ -127,7 +128,11 @@ function registerBrowser(rendererPath, requireAccount) {
     contents.on('will-navigate', guard)
     contents.on('will-redirect', guard)
     contents.on('will-attach-webview', event => event.preventDefault())
-    contents.on('did-start-loading', () => { current.status = 'Loading'; current.cancelled = false; current.responseError = null })
+    contents.on('did-start-loading', () => {
+      if (contents.isLoadingMainFrame()) {
+        current.status = 'Loading'; current.cancelled = false; current.responseError = null
+      }
+    })
     contents.on('did-navigate', (_event, url, status) => {
       current.url = url
       if (status >= 400) current.responseError = 'Website returned HTTP ' + status
@@ -153,9 +158,11 @@ function registerBrowser(rendererPath, requireAccount) {
     })
     try {
       await contents.loadURL(target.href)
-    } catch {
+    } catch (failure) {
+      const code = failure?.code ?? failure?.errno
+      const aborted = code === -3 || code === 'ERR_ABORTED' || String(failure?.message).includes('ERR_ABORTED')
       if (current.cancelled) current.status = 'Stopped'
-      else if (current.status !== 'Navigation blocked') current.status = 'Page failed to load'
+      else if (current.status !== 'Navigation blocked' && !aborted) current.status = 'Page failed to load'
     }
     return state(sender)
   })

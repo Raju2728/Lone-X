@@ -14,7 +14,13 @@ async function freePort() {
 
 function localRuntime(app) {
   const bundle = path.join(__dirname, '../ollama')
-  const binary = path.join(bundle, 'ollama.exe')
+  const override = process.env.LONEX_OLLAMA_MODEL_DIR
+  if (override && (!path.isAbsolute(override) || /^\\\\/.test(override))) throw new Error('LONEX_OLLAMA_MODEL_DIR must be an absolute local model folder.')
+  const bundledBinary = path.join(bundle, 'ollama.exe')
+  const binary = existsSync(bundledBinary) || !override ? bundledBinary
+    : path.join(process.env.LOCALAPPDATA || '', 'Programs/Ollama/ollama.exe')
+  const models = override ? path.resolve(override) : path.join(bundle, 'models')
+  if (override && !existsSync(binary)) throw new Error('An Ollama runtime is required to use the configured local model folder.')
   if (!existsSync(binary)) return async () => 'http://127.0.0.1:11434'
 
   let child
@@ -31,7 +37,7 @@ function localRuntime(app) {
     const host = '127.0.0.1:' + port
     const server = spawn(binary, ['serve'], {
       windowsHide: true, stdio: 'ignore',
-      env: { ...process.env, OLLAMA_HOST: host, OLLAMA_MODELS: path.join(bundle, 'models'), OLLAMA_NO_CLOUD: '1' }
+      env: { ...process.env, OLLAMA_HOST: host, OLLAMA_MODELS: models, OLLAMA_NO_CLOUD: '1' }
     })
     child = server
     let failure

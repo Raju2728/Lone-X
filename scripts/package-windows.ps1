@@ -1,3 +1,4 @@
+param([string]$OutputDirectory = 'public/downloads')
 $ErrorActionPreference = 'Stop'
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
@@ -16,6 +17,9 @@ try {
         node (Join-Path $PSScriptRoot 'brand-windows.mjs') (Join-Path $runtime 'electron.exe') (Join-Path $bundle.FullName 'Lone X.exe') (Join-Path (Get-Location) 'public/logo.ico')
         if ($LASTEXITCODE -ne 0) { throw 'Application icon embedding failed.' }
         Copy-Item -LiteralPath 'public/logo.ico' -Destination (Join-Path $bundle.FullName 'Lone-X.ico')
+        Copy-Item -LiteralPath 'LICENSE' -Destination $bundle.FullName
+        Copy-Item -LiteralPath 'public/THIRD-PARTY-NOTICES.txt' -Destination $bundle.FullName
+        Copy-Item -LiteralPath 'public/react-bits-LICENSE.md' -Destination (Join-Path $bundle.FullName 'React-Bits-LICENSE.md')
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Windows-Setup.txt') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Create-Desktop-Shortcut.ps1') -Destination $bundle.FullName
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Create-Desktop-Shortcut.cmd') -Destination $bundle.FullName
@@ -65,7 +69,7 @@ try {
             }
         }
 
-        $output = New-Item -ItemType Directory -Force public/downloads
+        $output = New-Item -ItemType Directory -Force -Path $OutputDirectory
         $archive = Join-Path $stage.FullName 'Lone-X-Windows.zip'
         tar.exe -a -cf $archive -C $stage.FullName 'Lone X'
         if ($LASTEXITCODE -ne 0) { throw 'ZIP creation failed' }

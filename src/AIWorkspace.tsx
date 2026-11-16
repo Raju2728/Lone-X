@@ -8,6 +8,7 @@ import type { Usage } from './OverviewActivity'
 import { chatModels, defaultModel, type ModelInventoryItem, type ModelProgress } from './modelCatalog'
 
 type Conversation = { id: string; title: string; updatedAt: number }
+type ReplyLanguage = 'auto' | 'thanglish' | 'english'
 
 const fileSources = [{ key: 'files', name: 'Add files', description: 'Attach local text or source files', icon: <FileText size={15} />, attach: true }]
 const responseEfforts = ['Short', 'Balanced', 'Detailed']
@@ -31,7 +32,7 @@ declare global {
       onModelProgress: (callback: (progress: ModelProgress) => void) => () => void
       overview: () => Promise<Usage>
       overviewUpdate: () => Promise<string | null>
-      send: (input: { model: string; text: string; chatId: string; effort?: string; agent?: boolean }) => Promise<Message[] | null>
+      send: (input: { model: string; text: string; chatId: string; effort?: string; agent?: boolean; replyLanguage?: ReplyLanguage }) => Promise<Message[] | null>
       installModel: (model: string) => Promise<boolean>
       conversations: () => Promise<Conversation[]>
       deleteChat: (id: string) => Promise<Conversation[]>
@@ -45,6 +46,15 @@ declare global {
 
 export default function AIWorkspace({ active, draft, setDraft }: { active: boolean; draft: string; setDraft: (draft: string) => void }) {
   const [model, setModel] = useState(defaultModel)
+  const [replyLanguage, setReplyLanguage] = useState<ReplyLanguage>(() => {
+    try {
+      const saved = localStorage.getItem('lone-x-reply-language')
+      return saved === 'thanglish' || saved === 'english' ? saved : 'auto'
+    } catch { return 'auto' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('lone-x-reply-language', replyLanguage) } catch { /* The in-memory preference still works. */ }
+  }, [replyLanguage])
   const [agent, setAgent] = useState(false)
   const [agentFolder, setAgentFolder] = useState('')
   const [pcWide, setPcWide] = useState(false)
@@ -234,7 +244,7 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
       }))
       const message = [text, ...excerpts].filter(Boolean).join('\n\n')
       if (message.length > 16000) throw new Error('Keep the prompt and attached text within 16,000 characters.')
-      const history = await api.send({ model: sendModel, text: message, chatId, effort: detail.effort, agent: sendAgent })
+      const history = await api.send({ model: sendModel, text: message, chatId, effort: detail.effort, agent: sendAgent, replyLanguage })
       if (!history) return false
       setMessages(history)
       setDraft('')
@@ -257,6 +267,11 @@ export default function AIWorkspace({ active, draft, setDraft }: { active: boole
     <div className="ai-console-bar">
       <div className="ai-runtime"><Radio size={17} aria-hidden="true" /><div><strong>Local session</strong><small>Raju · English &amp; Thanglish · Local Ollama</small></div></div>
       <div className="agent-controls">
+        <select className="provider-button" aria-label="Reply language" title="Reply language. An explicit language request in your message takes priority." value={replyLanguage} disabled={!!pending} onChange={event => setReplyLanguage(event.target.value as ReplyLanguage)}>
+          <option value="auto">Replies: Auto</option>
+          <option value="thanglish">Replies: Thanglish</option>
+          <option value="english">Replies: English</option>
+        </select>
         <button className="provider-button" aria-pressed={agent} disabled={!!pending || installing || choosingFolder} onClick={() => { setAgent(value => !value); if (!agent) setModel('qwen3:4b-instruct') }}>Agent {agent ? 'on' : 'off'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder()}>{choosingFolder ? 'Choosing…' : agentFolder ? 'Change folder' : 'Choose agent folder'}</button>
         <button className="provider-button" disabled={!!pending || choosingFolder} onClick={() => void chooseAgentFolder('desktop')}>Use Desktop</button>

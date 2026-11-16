@@ -54,10 +54,10 @@ export default function BrowserWorkspace() {
   return <section className="launch-panel" aria-label="Browser workspace">
     <h2>Browser workspace</h2>
     <div className="p-4">
-      <p className="muted">Review an HTTPS website before opening it. Navigation stays on its approved origin. Browser data is temporary.</p>
+      <p className="muted">Enter a domain or HTTPS address. Review the website and its www counterpart before opening. Other addresses require separate approval. Browser data is temporary.</p>
       <form className="mt-3 flex flex-wrap items-end gap-2" onSubmit={event => void open(event)}>
         <label className="min-w-0 flex-1">Website address
-          <input className="block w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] p-2" type="url" required maxLength={2048} value={url} placeholder="https://example.com" onChange={event => setUrl(event.target.value)} disabled={pending} />
+          <input className="block w-full rounded-lg border border-[var(--line)] bg-[var(--bg)] p-2" type="text" required maxLength={2048} value={url} placeholder="google.com or https://example.com" onChange={event => setUrl(event.target.value)} disabled={pending} />
         </label>
         <button className="provider-button" disabled={pending}>Review and open</button>
       </form>

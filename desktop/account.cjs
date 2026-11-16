@@ -1,4 +1,5 @@
-const { ipcMain, safeStorage } = require('electron')
+const { ipcMain } = require('electron')
+const storage = require('./protected-storage.cjs')
 const { DatabaseSync } = require('node:sqlite')
 const { randomBytes, randomInt, scryptSync, timingSafeEqual } = require('node:crypto')
 const { fileURLToPath } = require('node:url')
@@ -6,7 +7,7 @@ const path = require('node:path')
 const { readFileSync } = require('node:fs')
 const nodemailer = require('nodemailer')
 
-function registerAccount(app, rendererPath, requireConsent) {
+async function registerAccount(app, rendererPath, requireConsent) {
   const db = new DatabaseSync(path.join(app.getPath('userData'), 'account.sqlite'))
   db.exec('CREATE TABLE IF NOT EXISTS account (id INTEGER PRIMARY KEY CHECK (id = 1), email TEXT NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL)')
   db.exec('CREATE TABLE IF NOT EXISTS update_notice (revision TEXT PRIMARY KEY)')
@@ -19,27 +20,34 @@ function registerAccount(app, rendererPath, requireConsent) {
   const clearSession = db.prepare('DELETE FROM login_session WHERE id = 1')
   let expiresAt = 0
   const saved = db.prepare('SELECT encrypted FROM login_session WHERE id = 1').get()
-  if (saved && read.get() && safeStorage.isEncryptionAvailable()) {
+  if (saved && read.get()) {
     try {
-      const expiry = Number(safeStorage.decryptString(Buffer.from(saved.encrypted)))
+      const decrypted = await storage.decrypt(saved.encrypted)
+      const expiry = Number(decrypted.text)
       const now = Date.now()
-      if (Number.isSafeInteger(expiry) && expiry > now && expiry <= now + sessionDuration) expiresAt = expiry
+      if (Number.isSafeInteger(expiry) && expiry > now && expiry <= now + sessionDuration) {
+        expiresAt = expiry
+        if (decrypted.replacement) db.prepare('UPDATE login_session SET encrypted = ? WHERE id = 1').run(decrypted.replacement)
+      }
     } catch {
       // Invalid session data requires a new sign-in.
     }
   }
   if (!expiresAt) clearSession.run()
 
-  function beginSession() {
-    expiresAt = Date.now() + sessionDuration
-    if (safeStorage.isEncryptionAvailable()) {
-      const encrypted = safeStorage.encryptString(String(expiresAt))
+  async function beginSession() {
+    const expiry = Date.now() + sessionDuration
+    if (await storage.available()) {
+      const encrypted = await storage.encrypt(String(expiry))
       db.prepare('INSERT OR REPLACE INTO login_session VALUES (1, ?)').run(encrypted)
     }
+    expiresAt = expiry
   }
   let reset = null
   let nextAttempt = 0
   let nextReset = 0
+  // Encryption is asynchronous; keep password/session mutations in order.
+  let operations = Promise.resolve()
 
   const smtp = process.env.LONEX_SMTP_HOST && process.env.LONEX_SMTP_USER && process.env.LONEX_SMTP_PASSWORD
     ? nodemailer.createTransport({
@@ -90,7 +98,9 @@ function registerAccount(app, rendererPath, requireConsent) {
         throw new Error('Invalid account request origin.')
       }
       requireConsent()
-      return callback(event.sender, value)
+      const result = operations.then(() => { requireConsent(); return callback(event.sender, value) })
+      operations = result.catch(() => {})
+      return result
     })
   }
 
@@ -117,7 +127,7 @@ function registerAccount(app, rendererPath, requireConsent) {
     const { email, password } = credentials(input)
     if (read.get()) throw new Error('This Windows profile already has a Lone X account.')
     db.prepare('INSERT INTO account VALUES (1, ?, ?, ?)').run(email, ...newPassword(password))
-    beginSession()
+    await beginSession()
     void notifyUpdate(email)
     if (!smtp) return { emailSent: false }
     try {
@@ -128,7 +138,7 @@ function registerAccount(app, rendererPath, requireConsent) {
     }
   })
 
-  handle('login', (_sender, input) => {
+  handle('login', async (_sender, input) => {
     const { email, password } = credentials(input)
     if (Date.now() < nextAttempt) throw new Error('Wait a moment before trying again.')
     nextAttempt = Date.now() + 1000
@@ -136,7 +146,7 @@ function registerAccount(app, rendererPath, requireConsent) {
     if (!account || account.email !== email || !timingSafeEqual(derive(password, account.salt), Buffer.from(account.hash, 'hex'))) {
       throw new Error('Email or password is incorrect.')
     }
-    beginSession()
+    await beginSession()
     void notifyUpdate(email)
   })
 

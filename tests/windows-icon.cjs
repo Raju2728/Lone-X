@@ -14,6 +14,11 @@ test('branded Windows executable contains all logo sizes and launches the Electr
     const executable = path.join(temporary, 'Lone X.exe')
     const details = await brandWindowsExecutable(path.join(runtime, 'electron.exe'), executable, path.resolve(__dirname, '../public/logo.ico'))
     assert.deepEqual(details.sizes, [16, 24, 32, 48, 64, 128, 256])
+    const { getCurrentFuseWire, FuseV1Options, FuseState } = await import('@electron/fuses')
+    const fuses = await getCurrentFuseWire(executable)
+    for (const option of [FuseV1Options.RunAsNode, FuseV1Options.EnableNodeOptionsEnvironmentVariable, FuseV1Options.EnableNodeCliInspectArguments]) {
+      assert.equal(fuses[option], FuseState.DISABLE)
+    }
     const appFolder = path.join(temporary, 'resources/app')
     fs.mkdirSync(appFolder, { recursive: true })
     fs.mkdirSync(path.join(temporary, 'profile'))
@@ -25,6 +30,18 @@ test('branded Windows executable contains all logo sizes and launches the Electr
     const result = spawnSync(executable, [], { env, windowsHide: true, encoding: 'utf8', timeout: 25000 })
     assert.equal(result.status, 0, result.stderr || result.error?.message)
     assert.match(result.stdout, /Branded renderer loaded/)
+    const marker = path.join(temporary, 'node-options-injected.txt')
+    const injection = path.join(temporary, 'injection.cjs')
+    fs.writeFileSync(injection, `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'injected')`)
+    const hardened = spawnSync(executable, ['--inspect=0', '-e', 'console.log("NODE_MODE_BYPASS")'], {
+      env: { ...env, ELECTRON_RUN_AS_NODE: '1', NODE_OPTIONS: '--require=' + JSON.stringify(injection) },
+      windowsHide: true, encoding: 'utf8', timeout: 25000
+    })
+    assert.equal(hardened.status, 0, hardened.stderr || hardened.error?.message)
+    assert.match(hardened.stdout, /Branded renderer loaded/)
+    assert.doesNotMatch(hardened.stdout, /NODE_MODE_BYPASS/)
+    assert.doesNotMatch(hardened.stderr, /Debugger listening/)
+    assert.equal(fs.existsSync(marker), false)
   } finally {
     assert.equal(path.dirname(path.resolve(temporary)), base)
     const prefix = "'" + (temporary + path.sep).replaceAll("'", "''") + "'"

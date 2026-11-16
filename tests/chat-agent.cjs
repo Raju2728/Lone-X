@@ -6,6 +6,18 @@ const { DatabaseSync } = require('node:sqlite')
 const { createWorkspace, runAgent, agentModel } = require('../desktop/chat-agent.cjs')
 const { tokenLimits } = require('../desktop/token-limits.cjs')
 
+test('agent stops a repeated failed command without changes instead of spending more actions', async () => {
+  const db = new DatabaseSync(':memory:')
+  let executions = 0
+  try {
+    await assert.rejects(runAgent({ messages: [{ role: 'user', content: 'Repair tests' }], endpoint: 'http://fixture', signal: new AbortController().signal,
+      budget: tokenLimits(db), onDelta: () => {}, execute: async () => { executions++; return { outcome: 'Failed', output: 'failure' } },
+      request: async () => Response.json({ done: true, message: { role: 'assistant', tool_calls: [{ function: { name: 'run_npm', arguments: { action: 'test' } } }] } })
+    }), /repeated a failed command/)
+    assert.equal(executions, 1)
+  } finally { db.close() }
+})
+
 test('workspace actions require review, reject escape paths, detect stale files and retain backups', async () => {
   const base = path.resolve(__dirname, '../node_modules')
   const root = await fs.mkdtemp(path.join(base, '.agent-files-'))
@@ -53,6 +65,31 @@ test('workspace actions require review, reject escape paths, detect stale files 
     controller.abort()
     await assert.rejects(execute('write_file', { path: 'stopped.txt', content: 'bad' }), { name: 'AbortError' })
   } finally { assert.equal(path.dirname(root), base); await fs.rm(root, { recursive: true, force: true }) }
+})
+
+test('hard links cannot expose files outside the approved agent folder or provide npm configuration', async () => {
+  const base = path.resolve(__dirname, '../node_modules')
+  const temporary = await fs.mkdtemp(path.join(base, '.agent-hardlink-'))
+  try {
+    const root = path.join(temporary, 'project')
+    await fs.mkdir(root)
+    const outside = path.join(temporary, 'private.txt')
+    await fs.writeFile(outside, 'outside scope fixture')
+    await fs.link(outside, path.join(root, 'notes.txt'))
+    let approvals = 0
+    const execute = createWorkspace(root, { signal: new AbortController().signal, approve: async () => { approvals++; return true } })
+    await assert.rejects(execute('read_file', { path: 'notes.txt' }), /Hard-linked/)
+    await assert.rejects(execute('write_file', { path: 'notes.txt', content: 'bad' }), /Hard-linked/)
+    await assert.rejects(execute('recycle_file', { path: 'notes.txt' }), /Hard-linked/)
+    assert.equal(approvals, 0)
+    assert.equal(await fs.readFile(outside, 'utf8'), 'outside scope fixture')
+    await fs.writeFile(path.join(temporary, 'manifest.json'), JSON.stringify({ scripts: { test: 'node --test' } }))
+    await fs.link(path.join(temporary, 'manifest.json'), path.join(root, 'package.json'))
+    await assert.rejects(execute('run_npm', { action: 'test' }), /Invalid project file/)
+  } finally {
+    assert.equal(path.dirname(temporary), base)
+    await fs.rm(temporary, { recursive: true, force: true })
+  }
 })
 
 test('npm checks require a reviewed stable manifest and return real exit status', async () => {

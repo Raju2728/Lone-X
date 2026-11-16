@@ -38,11 +38,11 @@ function createWindow() {
   window.loadFile(rendererPath, { hash: 'workspace' })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
   session.defaultSession.setPermissionCheckHandler(() => false)
-  const requireConsent = registerLegal(app, rendererPath)
-  const requireAccount = registerAccount(app, rendererPath, requireConsent)
+  const requireConsent = await registerLegal(app, rendererPath)
+  const requireAccount = await registerAccount(app, rendererPath, requireConsent)
   const proposeFix = registerAI(app, rendererPath, requireAccount)
   registerProjects(rendererPath, requireAccount, proposeFix)
   registerTerminal(app, rendererPath, requireAccount)
@@ -52,5 +52,5 @@ app.whenReady().then(() => {
   registerBrowser(rendererPath, requireAccount)
   registerStorage(app, rendererPath, requireAccount)
   createWindow()
-})
+}).catch(error => { console.error('Lone X startup failed:', error.message); app.exit(1) })
 app.on('window-all-closed', () => app.quit())

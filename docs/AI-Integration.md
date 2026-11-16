@@ -1,8 +1,8 @@
 # Local AI setup
 
-Start Ollama and install a model, such as `qwen2.5:0.5b`. In the desktop **AI workspace**, send an instruction to the default local model.
+For development, start Ollama and install `qwen2.5:0.5b`. In **Chat**, send an instruction to the default local model. The portable Windows ZIP includes its own runtime and default model.
 
-Chat requests go to the Ollama server at `127.0.0.1:11434`. Successful turns are stored in `conversation.sqlite` inside the Electron user data directory. The latest 30 saved messages provide context.
+Development uses the Ollama server at `127.0.0.1:11434` unless a custom model store is selected. Packaged builds use a private loopback runtime. Successful turns are stored in `conversation.sqlite` inside the Electron user data directory. The latest 30 saved messages provide context.
 
 To verify live streaming from PowerShell:
 
@@ -35,7 +35,7 @@ To build the ZIP, install Ollama on the packaging PC and run `ollama pull qwen2.
 
 ## Choose a chat model
 
-Chat defaults to the bundled Qwen2.5 0.5B. Select **Qwen2.5 Coder 0.5B** or **Gemma 3 1B** in the Prompt Bar and click the download button if the model is missing. All three run locally once installed.
+Chat defaults to the bundled Qwen2.5 0.5B. The Prompt Bar also supports **Qwen2.5 Coder 0.5B**, **Gemma 3 1B**, **Gemma 3 4B** and **Qwen3 4B Instruct**. Download a missing model through the app; all five run locally once installed. Agent mode requires Qwen3 4B Instruct and approved file access.
 
 If you use your own Ollama installation with the development build, start Ollama and install models from PowerShell:
 
@@ -43,7 +43,41 @@ If you use your own Ollama installation with the development build, start Ollama
 ollama pull qwen2.5:0.5b
 ollama pull qwen2.5-coder:0.5b
 ollama pull gemma3:1b
+ollama pull gemma3:4b
+ollama pull qwen3:4b-instruct
 ollama list
 ```
 
 Use the Chat download button in the portable ZIP. Its bundled Ollama instance uses a model directory inside the extracted app.
+
+## Natural Thanglish replies
+
+Chat now has **Replies: Auto / Thanglish / English**, saved in local browser
+storage on the PC. An explicit language request in the current message takes
+priority. Auto handles varied Romanized-Tamil phrases, conversational topics,
+and short follow-ups using actual user-message context. Quotes, source code,
+attachment contents and assistant/tool messages do not set the language choice.
+All five models receive the shared guidance. This is prompt/context handling,
+not model training or a guarantee of fluency.
+
+Gemma 3 4B is an optional fifth model (about 3.3 GB download). It was evaluated
+on this PC using an isolated E: model cache. Actual outputs still had awkward
+Romanized-Tamil grammar and too much English; additional few-shot and native-
+Tamil checks did not establish ChatGPT-level conversation quality. It remains
+an optional local model, not a claimed fluent replacement. The installed 0.5B
+models were especially weak on open-ended Thanglish conversation. See
+Thanglish-Review.md for the evidence and limits.
+
+A custom model store can be selected before starting the app:
+
+```powershell
+$env:LONEX_OLLAMA_MODEL_DIR = 'E:\Lone X\test-artifacts\ollama-models'
+npm run desktop
+```
+
+Then select **Gemma 3 4B** in Chat. The runtime uses that E: folder and does not
+change the standalone Ollama model store. A packaged build uses its bundled
+runtime; a development build needs an installed Ollama runtime. Optional
+unavailable models can be downloaded through the app into that selected store.
+The custom store survives application uninstall. Clear the environment override
+to return to the normal bundled/default runtime behavior.

@@ -1,5 +1,20 @@
 # Development progress
 
+## Composer keyboard accessibility increment — 19 November 2026
+
+Sources, model and effort popovers now expose their control relationships.
+Opening Sources focuses its first option; opening Effort focuses its slider.
+Escape returns focus to the corresponding trigger. Model/source lists support
+Arrow keys and Home/End with one tab stop; moving focus outside the composer
+closes its popovers. Typed suggestions expose the active option to assistive
+technology. Existing prompt border styling and model-selection behavior remain.
+
+Desktop integration covers focus entry/restoration, model Home/End navigation,
+effort keyboard values and dismissal when focus leaves the controls. This is a
+focused keyboard increment, not a full screen-reader or accessibility audit.
+Production build and full Electron integration passed, including these keyboard
+checks with the app focused after the separate browser-window fixtures.
+
 ## Update reliability increment — 19 November 2026
 
 LoneX -Avail and LoneX -update now refuse to compare an unidentified local build

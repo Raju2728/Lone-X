@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -278,6 +279,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const [attachments, setAttachments] = useState<string[]>([]);
   const [modelKey, setModelKey] = useState(defaultModel);
   const [plusOpen, setPlusOpen] = useState(false);
+  const menuId = useId();
   const [modelOpen, setModelOpen] = useState(false);
   const [effortOpen, setEffortOpen] = useState(false);
   const [effortIndex, setEffortIndex] = useState(() => {
@@ -313,6 +315,12 @@ const PromptBar: React.FC<PromptBarProps> = ({
     setEffortOpen(false);
   }, []);
 
+  useEffect(() => {
+    if (effortOpen) rootRef.current?.querySelector<HTMLElement>('[role="slider"]')?.focus();
+    else if (plusOpen) rowRefs.current[0]?.focus();
+    else if (modelOpen) rowRefs.current[cursor]?.focus();
+  }, [effortOpen, plusOpen, modelOpen]);
+
   useLayoutEffect(() => {
     const glow = glowRef.current;
     if (!glow || !open) return;
@@ -339,7 +347,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   useEffect(() => {
     if (!plusOpen && !modelOpen && !effortOpen) return undefined;
     const onDown = (e: globalThis.PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) closeMenus();
+      if (!rootRef.current?.contains(e.target as Node)) { closeMenus(); setDismissed(true); }
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -482,8 +490,11 @@ const PromptBar: React.FC<PromptBarProps> = ({
       e.preventDefault();
       setEffort(efforts.length - 1);
     } else if (e.key === 'Escape') {
-      setEffortOpen(false);
-      focusInput();
+      e.preventDefault();
+      e.stopPropagation();
+      closeMenus();
+      setDismissed(true);
+      rootRef.current?.querySelector<HTMLButtonElement>('[aria-label="Choose effort"]')?.focus();
     }
   };
   const stepAt = (i: number) => `calc(${EDGE}px + (100% - ${EDGE * 2}px) * ${i / Math.max(1, efforts.length - 1)})`;
@@ -587,6 +598,18 @@ const PromptBar: React.FC<PromptBarProps> = ({
       className={`prompt-bar${className ? ` ${className}` : ''}`}
       data-busy={busy ? '' : undefined}
       data-max={maxed ? '' : undefined}
+      onKeyDown={event => {
+        if (event.key !== 'Escape' || !open || event.defaultPrevented) return;
+        event.preventDefault();
+        closeMenus();
+        setDismissed(true);
+      }}
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          closeMenus();
+          setDismissed(true);
+        }
+      }}
       style={
         {
           '--pb-bg': background,
@@ -602,21 +625,25 @@ const PromptBar: React.FC<PromptBarProps> = ({
       {open ? (
         <div
           className="prompt-bar__menu"
+          id={menuId}
           role={open === 'effort' ? 'dialog' : 'listbox'}
           aria-label={
             open === 'at' ? 'Sources' : open === 'slash' ? 'Commands' : open === 'model' ? 'Models' : 'Effort'
           }
           data-kind={open}
           onKeyDown={event => {
-            if (open !== 'model') return;
             if (event.key === 'Escape') {
               event.preventDefault();
               closeMenus();
-              rootRef.current?.querySelector<HTMLButtonElement>('[aria-label="Choose model"]')?.focus();
+              setDismissed(true);
+              const label = open === 'model' ? 'Choose model' : open === 'effort' ? 'Choose effort' : plusOpen ? 'Add files and sources' : null;
+              if (label) rootRef.current?.querySelector<HTMLButtonElement>('[aria-label="' + label + '"]')?.focus();
+              else focusInput();
             }
-            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            if (open === 'effort' || !list.length) return;
+            if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
               event.preventDefault();
-              const next = (cursor + (event.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length;
+              const next = event.key === 'Home' ? 0 : event.key === 'End' ? list.length - 1 : (cursor + (event.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length;
               setActive(next);
               rowRefs.current[next]?.focus();
             }
@@ -679,6 +706,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
                   }}
                   type="button"
                   role="option"
+                  id={`${menuId}-${i}`}
+                  tabIndex={i === cursor ? 0 : -1}
                   aria-selected={open === 'model' ? row.key === model?.key : i === cursor}
                   className="prompt-bar__row"
                   onMouseDown={e => e.preventDefault()}
@@ -745,6 +774,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
           value={draft}
           placeholder={listening ? 'Listening…' : placeholder}
           aria-label="Prompt"
+          aria-autocomplete="list"
+          aria-controls={open === 'at' || open === 'slash' ? menuId : undefined}
+          aria-activedescendant={(open === 'at' || open === 'slash') && list.length ? `${menuId}-${cursor}` : undefined}
           onChange={e => {
             setDraft(e.target.value);
             typing.current.energy = Math.min(1.6, typing.current.energy + 0.22);
@@ -773,6 +805,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
             aria-label="Add files and sources"
             disabled={busy}
             aria-expanded={plusOpen}
+            aria-haspopup="listbox"
+            aria-controls={plusOpen ? menuId : undefined}
             data-on={plusOpen ? '' : undefined}
             onMouseDown={e => e.preventDefault()}
             onClick={() => {
@@ -792,6 +826,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
               aria-label="Choose model"
               disabled={busy || modelLocked}
               aria-expanded={modelOpen}
+              aria-haspopup="listbox"
+              aria-controls={modelOpen ? menuId : undefined}
               data-on={modelOpen ? '' : undefined}
               onMouseDown={e => e.preventDefault()}
               onClick={() => {
@@ -800,7 +836,6 @@ const PromptBar: React.FC<PromptBarProps> = ({
                 const index = Math.max(0, models.indexOf(model));
                 setActive(index);
                 setModelOpen(!modelOpen);
-                if (!modelOpen) requestAnimationFrame(() => rowRefs.current[index]?.focus());
               }}
             >
               <span>{model.name}</span>
@@ -814,6 +849,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
               aria-label="Choose effort"
               disabled={busy}
               aria-expanded={effortOpen}
+              aria-haspopup="dialog"
+              aria-controls={effortOpen ? menuId : undefined}
               data-on={effortOpen ? '' : undefined}
               data-max={maxed ? '' : undefined}
               onMouseDown={e => e.preventDefault()}

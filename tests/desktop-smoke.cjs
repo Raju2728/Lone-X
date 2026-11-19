@@ -537,6 +537,9 @@ async function runSmoke() {
   assert.throws(() => process.kill(runningChild.pid, 0), { code: 'ESRCH' })
   assert.deepEqual(terminal.history.map(entry => entry.outcome), ['Stopped', 'Completed'])
   assert.equal((await window.webContents.executeJavaScript("window.loneXTerminal.run('LoneX -v')")).output, 'Lone X (Beta)')
+  for (const command of ['LoneX -Avail', 'LoneX -update']) {
+    await assert.rejects(window.webContents.executeJavaScript('window.loneXTerminal.run(' + JSON.stringify(command) + ')'), /no verified build revision/)
+  }
   await assert.rejects(window.webContents.executeJavaScript("window.loneXTerminal.run('LoneX -uninstall')"), /Development files will be kept/)
   console.log('PowerShell allowlist, prompt-free execution, emergency stop, and audit passed.')
   await window.webContents.executeJavaScript(`

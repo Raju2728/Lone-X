@@ -1,5 +1,28 @@
 # Development progress
 
+## Update reliability increment — 19 November 2026
+
+LoneX -Avail and LoneX -update now refuse to compare an unidentified local build
+against GitHub, rather than treating missing build-info as a newer-build signal.
+The error directs users to an official extracted Windows ZIP. Passive overview
+checks continue suppressing update notices when the local revision is unknown.
+Release metadata requests have a 15-second timeout combined with cancellation.
+Draft or malformed release metadata is refused before a download begins.
+
+GitHub commit ancestry must confirm the release is ahead of the installed build.
+Older/identical releases cause no download; diverged or unavailable comparisons
+are reported as unverifiable, rather than offered as upgrades.
+
+Six focused tests verify same-revision/no-download behavior, different-revision
+verified bytes, missing build identity, malformed metadata/HTTP failure, wrong
+hash at the correct size, truncated/oversized bodies and cancelled transfer
+cleanup. These use disposable E: fixtures and simulated release metadata; they
+do not certify a real two-release installation/update or clean Windows setup.
+The portable extraction workflow and stable Lone-X-Windows.zip name remain.
+Production build and full Electron regression passed. A read-only live GitHub
+check using installed source revision b2bd15b correctly offered no older release
+as an update; no release asset was downloaded or replaced.
+
 ## Maintenance increment — 16 November 2026
 
 Following Raju's request to move forward, addressed the next Medium maintenance

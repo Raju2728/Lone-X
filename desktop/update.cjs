@@ -11,17 +11,28 @@ const maxSize = 2 * 1024 * 1024 * 1024
 
 async function checkUpdate(signal, request = fetch, buildInfo = path.join(__dirname, '../build-info.json'), requireCurrentBuild = false) {
   const current = await readFile(buildInfo, 'utf8').then(JSON.parse).catch(() => ({}))
-  if (requireCurrentBuild && !/^[a-f0-9]{40}$/.test(current.revision ?? '')) return null
-  const release = await request(releaseUrl, { signal, redirect: 'error' })
+  if (!/^[a-f0-9]{40}$/.test(current?.revision ?? '')) {
+    if (requireCurrentBuild) return null
+    throw new Error('This copy has no verified build revision. Download and extract an official Lone X Windows ZIP to check for updates.')
+  }
+  signal?.throwIfAborted()
+  const release = await request(releaseUrl, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000), redirect: 'error' })
   if (!release.ok) throw new Error('GitHub could not provide the Windows preview release.')
-  const { assets } = await release.json()
-  const asset = assets?.find(item => item.name === name && item.browser_download_url === downloadUrl)
+  const metadata = await release.json()
+  const asset = Array.isArray(metadata?.assets) && !metadata.draft && metadata.assets.find(item => item?.name === name && item.browser_download_url === downloadUrl)
   const revision = /^build:([a-f0-9]{40})$/.exec(asset?.label ?? '')?.[1]
   const digest = /^sha256:([a-f0-9]{64})$/.exec(asset?.digest ?? '')?.[1]
   if (!revision || !digest || !Number.isSafeInteger(asset.size) || asset.size <= 0 || asset.size > maxSize) {
     throw new Error('GitHub did not provide a verifiable Windows update.')
   }
-  return revision === current.revision ? null : { revision, digest, size: asset.size }
+  if (revision === current.revision) return null
+  const comparison = await request('https://api.github.com/repos/Raju2728/Lone-X/compare/' + current.revision + '...' + revision,
+    { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15000)]) : AbortSignal.timeout(15000), redirect: 'error' })
+  if (!comparison.ok) throw new Error('GitHub could not verify the update order. No update was downloaded.')
+  const { status } = await comparison.json()
+  if (status === 'behind' || status === 'identical') return null
+  if (status !== 'ahead') throw new Error('The release and this build have no verified upgrade path. No update was downloaded.')
+  return { revision, digest, size: asset.size }
 }
 
 async function downloadUpdate(downloads, signal, request = fetch, buildInfo) {

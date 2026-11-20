@@ -1,0 +1,81 @@
+{
+  "date": "2026-11-20",
+  "scope": "Candidate discovery and data-quality inspection; not an exhaustive search or legal certification",
+  "training_started": false,
+  "approved_external_training_rows": 0,
+  "candidates": [
+    {
+      "source": "dheepakkaran/TamilTech-QA",
+      "url": "https://huggingface.co/datasets/dheepakkaran/TamilTech-QA",
+      "revision": "a73e451b2e58bcae7ce0d2c553392ff84b6738ce",
+      "declared_license": "CC BY 4.0",
+      "observed_rows": 4430,
+      "excluded_non_synthetic_rows": 4065,
+      "synthetic_review_candidates": 365,
+      "decision": "Downloaded for inspection; all candidates pending quality review. No row admitted to training.",
+      "evidence": "Public preview contains unrelated question/video-title pairs. Sampled synthetic answer incorrectly claims a primary key is compulsory for every table. Automatic checks flagged eight absolute claims and one duplicate question; these are review flags, not a complete error inventory.",
+      "review_csv": "test-artifacts/thanglish-data-review/review.csv",
+      "audit_manifest": "test-artifacts/thanglish-data-review/audit.json"
+    },
+    {
+      "source": "sugiv/tanglish-pairs-v1",
+      "url": "https://huggingface.co/datasets/sugiv/tanglish-pairs-v1",
+      "decision": "Unauthenticated metadata request returned 401. Access/license unresolved; no data downloaded."
+    },
+    {
+      "source": "Chat2Find/Chat2Find-Instruct-Reasoning-Dataset",
+      "url": "https://huggingface.co/datasets/Chat2Find/Chat2Find-Instruct-Reasoning-Dataset",
+      "decision": "Full dataset card requires purchased access; not pursued. Metadata MIT label is not treated as bypassing the stated access conditions."
+    },
+    {
+      "source": "Chat2Find/Chat2Find-Instruct-Reasoning-Sample",
+      "url": "https://huggingface.co/datasets/Chat2Find/Chat2Find-Instruct-Reasoning-Sample",
+      "revision": "5118734df5d0d5d6575d36c4ecc6c0e86ece881e",
+      "declared_license": "MIT",
+      "decision": "Inspected public metadata/viewer only. Mixed Sinhala, Tamil-script and English plus unrelated tool schemas; not accepted as a natural Romanized-Tamil assistant corpus."
+    },
+    {
+      "source": "vishnu-n/Tanglish-Corpus-185k",
+      "url": "https://huggingface.co/datasets/vishnu-n/Tanglish-Corpus-185k",
+      "declared_license": "CC BY 4.0",
+      "decision": "Sentence corpus rather than assistant replies. Card lists scraped Reddit/YouTube and other sources; upstream permission scope not verified. Not downloaded or approved."
+    },
+    {
+      "source": "Prajjit/CodeMixCheck",
+      "url": "https://huggingface.co/datasets/Prajjit/CodeMixCheck",
+      "declared_license": "CC BY-NC 4.0",
+      "decision": "Classification dataset, not assistant conversations; noncommercial restriction requires separate consideration before public product use. Not downloaded or approved."
+    },
+    {
+      "source": "Zapd0s/Tanglish-Conversational-SFT",
+      "url": "https://huggingface.co/datasets/Zapd0s/Tanglish-Conversational-SFT",
+      "revision": "2dd1079b4e9e46df9b91c1c4f7ee6dfeb0834fc0",
+      "declared_license": "CC BY 4.0",
+      "observed_rows": 11906,
+      "flagged_rows": 4793,
+      "review_candidates": 7113,
+      "approved_training_rows": 0,
+      "decision": "Pinned data downloaded and conservatively filtered for review only. Not suitable for wholesale assistant training.",
+      "evidence": "Filtered samples still contain missing context, invented names/personal experiences, factual claims without grounding and promises to meet later. Regex filtering is not semantic approval.",
+      "audit_manifest": "test-artifacts/thanglish-conversation-review/audit.json"
+    },
+    {
+      "source": "Naveen04/alpaca-tanglish",
+      "url": "https://huggingface.co/datasets/Naveen04/alpaca-tanglish",
+      "revision": "a60c6ffbb0a8d1a242b8ca9c0f1bf28bde225b8a",
+      "declared_license": "MIT",
+      "observed_rows": 292,
+      "approved_training_rows": 0,
+      "decision": "Pinned data downloaded for inspection; not admitted. Mix of translation and instructions.",
+      "evidence": "Samples include invented directions to an unspecified museum, claiming to watch films, English-only output despite a Tanglish instruction, and a mistranslated apology."
+    },
+    {
+      "source": "barryallen16/tanglish-general-sft",
+      "url": "https://huggingface.co/datasets/barryallen16/tanglish-general-sft",
+      "revision": "d4d15a10a9564563709ac6d29281a4487145d8b3",
+      "decision": "Public metadata/card inspected. License not stated; no bulk download or training approval."
+    }
+  ],
+  "next": "Free-source discovery found useful language material but no training-ready corpus. Curate standalone assistant-safe replies, correct facts and language, record reviewer decisions and provenance, and split by conversation/topic before training. No external row is approved merely because it passes automatic filters.",
+  "unchanged": "Existing models, failed adapters, installed application and public releases were not modified."
+}

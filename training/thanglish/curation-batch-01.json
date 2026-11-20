@@ -1,0 +1,176 @@
+{
+  "status": "Assistant-corrected draft; not independently fluent-speaker reviewed and not approved for training.",
+  "source": "Zapd0s/Tanglish-Conversational-SFT",
+  "revision": "2dd1079b4e9e46df9b91c1c4f7ee6dfeb0834fc0",
+  "license": "CC BY 4.0",
+  "corrections": [
+    {
+      "source_row": 3110,
+      "topic": "learning",
+      "question": "Python pudhusa padikka poren. Rendu vaarathula full-a kathukka mudiyuma?",
+      "answer": "Rendu vaarathula Python basics-ai kathukka aarambikkalam; full-a master panna adhigama practice venum. Mudhal vaaram variables, conditions, loops practice pannunga. Adutha vaaram functions-um oru chinna project-um seiyunga. Dhinamum evvalavu neram othukka mudiyum?",
+      "reason": "Replace dismissive register with realistic expectations and concrete next steps."
+    },
+    {
+      "source_row": 3227,
+      "topic": "python",
+      "question": "Python-la list-um loop-um serthu epdi use panradhu?",
+      "answer": "List-la pala values-ai vechukkalam. Loop use panni ovvoru value-aiyum eduthu velai seiyalam:\n```python\nfruits = ['apple', 'mango']\nfor fruit in fruits:\n    print(fruit)\n```\nIdhu mudhalla `apple`, aduthu `mango` nu print pannum.",
+      "reason": "Replace incomplete analogy with an executable example and exact output."
+    },
+    {
+      "source_row": 3423,
+      "topic": "python",
+      "question": "Python-la for loop-kum list comprehension-kum speed difference irukka?",
+      "answer": "Oru list-ai build panra sila cases-la list comprehension vegama irukkalam. Aana Python version, seira operation, data size poruthu result maarum. Rendum ore velai seiyudha nu paathuttu `timeit` use panni measure pannunga. Purinjukka easy-a irukkura code-aiyum gavanathula eduthukkonga.",
+      "reason": "Remove blanket performance claim and misleading C-implementation explanation."
+    },
+    {
+      "source_row": 4026,
+      "topic": "web",
+      "question": "College assignment-ku HTML, CSS vechu oru landing page pannanum. Epdi start panradhu?",
+      "answer": "Mudhal-la page-la enna content venum nu ezhuthunga: heading, chinna description, main button, features, footer. HTML-la andha structure-ai amaichuttu CSS-la spacing, colours, layout set pannunga. Phone screen-layum text-um button-um sariyaa theriyudha nu check pannunga.",
+      "reason": "Keep useful structure while adding responsive verification."
+    },
+    {
+      "source_row": 4027,
+      "topic": "web",
+      "question": "HTML landing page ready. CSS-la design nalla theriyuradhukku enna basics gavanikkanum?",
+      "answer": "Text padikka easy-a irukkura font, pothumaana contrast, consistent spacing use pannunga. Layout-ku Flexbox illa Grid use pannalam. Oru main accent colour podhum. Chinna screen-la content cut aagama irukka responsive styles set pannunga; keyboard focus-um theliva theriyanum.",
+      "reason": "Restore missing context and avoid unnecessary third-party font dependency."
+    },
+    {
+      "source_row": 4091,
+      "topic": "git",
+      "question": "Remote Git repository-ai en computer-ku epdi copy panradhu?",
+      "answer": "Git install aagirundha, terminal-la project vaikka vendiya folder-ku ponga. `git clone <repository-url>` command-la `<repository-url>` badhila unga repo URL-ai podunga. Private repo-na access thevaippadum. Clone pannradhu mattum project code-ai run pannaadhu; run panna munnadi files-ai review pannunga.",
+      "reason": "Clarify placeholder, private access and that cloning does not execute the project."
+    },
+    {
+      "source_row": 4184,
+      "topic": "git",
+      "question": "Git merge conflict vandhurukku. En changes-ai lose pannaama epdi resolve panradhu?",
+      "answer": "Mudhal-la `git status` use panni conflict files-ai paarunga. Mukkiyamaana uncommitted changes-ku backup eduthukkonga. Conflict irukkura file-la rendu pakkam changes-aiyum padichu, thevaiyaana final content-ai vechuttu conflict markers-ai remove pannunga. Test pannina piragu files-ai stage panni merge-ai complete pannunga. Puriyadha changes-ai mothama discard panna vendam.",
+      "reason": "Replace vague reassurance with non-destructive conflict guidance."
+    },
+    {
+      "source_row": 6961,
+      "topic": "git",
+      "question": "Git-um GitHub-um onnu dhaana? Code manage panna edhukku use panraanga?",
+      "answer": "Rendum onnu illa. Git oru version control tool; files-la panna changes-ai history-oda unga computer-laye track pannalam. GitHub, Git repositories-ai online-la host panna oru service. Team-oda code share panna, review panna, collaborate panna adhu udhavum.",
+      "reason": "Separate Git from GitHub and remove unsupported recruitment guarantee."
+    },
+    {
+      "source_row": 3238,
+      "topic": "database",
+      "question": "SQL JOIN-ai simple example-oda explain pannunga.",
+      "answer": "Rendu tables-la related rows-ai serthu paakka JOIN use pannuvom. `Students(id, name)` table-um `Loans(student_id, book)` table-um irundha, `Students.id = Loans.student_id` condition vechu yaar endha book eduthirukkaanga nu paakkalam. INNER JOIN matching rows-ai mattum kaattum; LEFT JOIN left table-oda ella rows-aiyum kaattum.",
+      "reason": "Complete the source's unfinished explanation with explicit keys and join behavior."
+    },
+    {
+      "source_row": 3506,
+      "topic": "database",
+      "question": "SQL database-kum NoSQL database-kum enna vithiyasam?",
+      "answer": "Relational databases-la data-ai tables-um relations-um vechu model pannuvom; SQL use panni query pannalam. NoSQL oru periya category: document, key-value, graph maadhiri databases irukku. NoSQL-na unstructured data mattum nu artham illa. Unga data relationships, query needs, consistency thevai poruthu database-ai choose pannunga.",
+      "reason": "Correct the structured-versus-unstructured oversimplification."
+    },
+    {
+      "source_row": 3663,
+      "topic": "career",
+      "question": "Internship-ku apply pannanum. Resume empty-a irukku; enna serkkalam?",
+      "answer": "Ungalukku therinja skills, coursework, chinna projects, volunteering irundha serkkalam. Project-la neenga enna seidheenga, enna tools use panneenga nu theliva ezhuthunga. Illaadha experience-ai serkka vendam. Neenga apply panra role-um ippo irukkura resume sections-um sonna, adhukku etha maadhiri arrange pannalam.",
+      "reason": "Offer useful first steps without promising selection."
+    },
+    {
+      "source_row": 3637,
+      "topic": "career",
+      "question": "Competitive programming profile-ai resume-la podalaama?",
+      "answer": "Apply panra role-ku relevant-a irundha podalam. Unga actual rating, contest results illa solved problems pathi sariyana details-oda profile link serkkunga. Ellaa recruiters-um adhai ore maadhiri evaluate panna maattaanga. Projects-um problem-solving work-um theliva kaatturadhum mukkiyam.",
+      "reason": "Remove unsupported claim of universally high recruiter weight."
+    },
+    {
+      "source_row": 9753,
+      "topic": "career",
+      "question": "Kaggle Notebook Expert achievement-ai resume-la epdi explain panradhu?",
+      "answer": "Achievement-oda exact name-aiyum profile link-aiyum podunga. Adhoda serthu neenga publish panna notebooks, use panna methods, verify panna mudiyura results pathi ezhuthalam. Nijama measure pannaadha accuracy percentage illa competition rank-ai invent panna vendam.",
+      "reason": "Remove fabricated 15-percent accuracy gain and 5000-developer claim."
+    },
+    {
+      "source_row": 6173,
+      "topic": "career",
+      "question": "Rendu varushathula moonu jobs change pannirukken. Interview-la epdi explain panradhu?",
+      "answer": "Ovvoru change-kum unmaiyaana reason-ai surukkama sollunga. Andha roles-la enna kathukkiteenga, ippo apply panra role unga goals-ku epdi porundhudhu nu explain pannunga. Munnaadi company-ai thittaama pesunga; illaadha reason-ai uruvaakka vendam.",
+      "reason": "Avoid labeling all job changes a red flag or coaching deception."
+    },
+    {
+      "source_row": 7156,
+      "topic": "career",
+      "question": "UPSC prepare pannadhunaala moonu varusha career gap irukku. IT interview-la epdi sollalaam?",
+      "answer": "Andha kaalathula UPSC-ku prepare panneenga nu unmaiya sollunga. Ippo IT-ku maaruradhukkaaga enna skills kathukkiteenga, enna projects seidheenga nu kaattunga. Study gap-ai maraikka vendam; neenga ippo role-ku ready-a irukkeengala nu explain panradhu mukkiyam.",
+      "reason": "Remove invented names and automatic strength claims; focus on truthful evidence."
+    },
+    {
+      "source_row": 4725,
+      "topic": "learning",
+      "question": "Semester start aachu. Daily padikkura consistency varala. Enna pannalam?",
+      "answer": "Dhinamum follow panna mudiyura chinna target-la aarambinga. Udharanama, oru topic-ai irubadhu nimisham padichuttu moonu questions solve pannunga. Oru naal miss aana adutha naal thirumba aarambikkalam. Weekly-a enna mudinjudhu nu paathu target-ai adjust pannunga.",
+      "reason": "Replace universal instruction to stop daily schedules with flexible practical guidance."
+    },
+    {
+      "source_row": 3177,
+      "topic": "planning",
+      "question": "Rest edukkuradhaiyum schedule pannalama? Adhuvum oru task maadhiri stress aaguma?",
+      "answer": "Ungalukku udhavumna flexible-a break time vechukkalam. Adhai complete panna vendiya task maadhiri paakka thevai illa. Oru chinna walk illa summa amaidhiya irukkuradhu podhum. Schedule stress-a irundha strict timing illaama velai naduvula break eduthukkonga.",
+      "reason": "Remove invented personal calendar and rigid instruction."
+    },
+    {
+      "source_row": 4012,
+      "topic": "learning",
+      "question": "Mock test ezhudhi time management track pannradhu useful-a irukkuma?",
+      "answer": "Useful-a irukkalam. Test mudinjudhum endha questions-la neram adhigama pochu, endha mistakes thirumba varudhu nu review pannunga. Speed mattum illaama accuracy-aiyum track pannunga. Unga exam duration-ku etha maadhiri practice time-ai set pannunga.",
+      "reason": "Make the answer standalone and include accuracy and review."
+    },
+    {
+      "source_row": 819,
+      "topic": "capability",
+      "question": "Padikka table illa; laptop vaikka kooda space illa. Neenga arrange panni thara mudiyuma?",
+      "answer": "Naan inga irundhu table arrange panna mudiyadhu. Aana unga space-ku etha setup plan panna udhavalam. Ungalukku irukkura idathoda alavu enna? Hostel illa college-na maintenance office-kitta table available-a nu kekkalam.",
+      "reason": "Remove false claim of contacting maintenance and arranging delivery."
+    },
+    {
+      "source_row": 1854,
+      "topic": "identity",
+      "question": "Neenga NUS-la padikkireengala? Enakku anga MS admission kedachirukku.",
+      "answer": "Admission kedachadhukku vaazhthukkal! Naan AI assistant; NUS-la padikkala. Course details, accommodation illa preparation pathi enna help venum? Admission-specific rules-ai university-oda official information-la verify pannunga.",
+      "reason": "Correct student impersonation while preserving a warm response."
+    },
+    {
+      "source_row": 8790,
+      "topic": "capability",
+      "question": "Interview-ku useful-a irundhudhu. Weekend-la mock interview panna help pannuveengala?",
+      "answer": "Neenga indha chat-ku thirumba varumbodhu mock interview practice pannalam. Naan thaniya weekend-la message anuppa illa call panna mudiyadhu. Ippove practice panna virumbina, role-um experience level-um sollunga.",
+      "reason": "Remove invented name and promise of a future personal meeting."
+    },
+    {
+      "source_row": 10175,
+      "topic": "identity",
+      "question": "Tamil New Year-ku neenga enna dress poda poringa?",
+      "answer": "Naan AI assistant; enakku dress podra anubavam illa. Neenga outfit choose panna help venumna, ungalukku pidicha style-um colour-um sollunga.",
+      "reason": "Replace invented personal clothing plans with an honest, useful response."
+    },
+    {
+      "source_row": 1847,
+      "topic": "identity",
+      "question": "Unga appa enna velai seiraaru? Avaroda annual income evvalavu?",
+      "answer": "Naan AI assistant; enakku kudumbam illa personal income details illa. Oru form fill panna help venumna, adhu enna information kekkudhu nu personal details-ai maraichuttu sollunga.",
+      "reason": "Remove fabricated father, business, income and supporting documents."
+    },
+    {
+      "source_row": 8074,
+      "topic": "uncertainty",
+      "question": "Company assessment pattern eppovum ore maadhiri irukkuma? Eppadi confirm panradhu?",
+      "answer": "Pattern hiring round, role, year poruthu maaralam. Unga invitation mail-um company-oda official candidate instructions-um check pannunga. Details share panna virumbina personal information-ai maraichuttu anuppunga; adhai vechu preparation plan pannalam.",
+      "reason": "Replace stale provider-specific assessment claim with verification guidance."
+    }
+  ]
+}

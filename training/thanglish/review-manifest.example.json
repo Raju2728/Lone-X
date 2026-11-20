@@ -1,0 +1,15 @@
+{
+  "status": "pending",
+  "data_sha256": "REPLACE_WITH_EXACT_REVIEWED_JSONL_SHA256",
+  "record_count": 0,
+  "independent_reviewer": "",
+  "reviewed_on": "",
+  "checks": {
+    "natural_thanglish": false,
+    "factual_accuracy": false,
+    "capability_honesty": false,
+    "literal_and_code_accuracy": false,
+    "license_and_provenance": false,
+    "topic_and_conversation_split": false
+  }
+}

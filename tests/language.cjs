@@ -49,3 +49,17 @@ test('quoted file content and attachments do not force the response language', (
   assert.doesNotMatch(languageInstruction('Explain this code\n\nFile: note.txt\noru file create pannu'), /For THIS reply/)
   assert.match(languageInstruction('Reply in English: oru file create panni sollu'), /explicitly requested English/)
 })
+
+test('ordinary questions recognize additional conversational spellings while respecting English and quoted text', () => {
+  const questions = [
+    'Git-um GitHub-um onnu dhaana? Code manage panna edhukku use panraanga?',
+    'Competitive programming profile-ai resume-la podalaama?',
+    'Rest edukkuradhaiyum schedule pannalama? Adhuvum oru task maadhiri stress aaguma?',
+    'Mock test ezhudhi time management track pannradhu useful-a irukkuma?',
+  ]
+  for (const question of questions) {
+    assert.equal(responseLanguage(question), 'thanglish', question)
+    assert.equal(responseLanguage('Reply only in English. ' + question), 'english')
+    assert.equal(responseLanguage('Explain this sentence: ' + JSON.stringify(question)), 'auto')
+  }
+})

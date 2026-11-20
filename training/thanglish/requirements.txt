@@ -1,0 +1,7 @@
+# Install CUDA-enabled PyTorch for the GPU environment separately.
+# Resolve and freeze exact versions on that environment before a training run.
+transformers>=4.53,<5
+peft>=0.16,<1
+datasets>=3,<5
+accelerate>=1,<2
+sentencepiece>=0.2

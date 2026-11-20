@@ -1,0 +1,18 @@
+The file curation-batch-01.json adapts selected rows from
+Tanglish-Conversational-SFT by Zapd0s.
+Source: https://huggingface.co/datasets/Zapd0s/Tanglish-Conversational-SFT
+Pinned revision: 2dd1079b4e9e46df9b91c1c4f7ee6dfeb0834fc0
+Publisher-declared license: Creative Commons Attribution 4.0 International
+License: https://creativecommons.org/licenses/by/4.0/
+
+Modifications by the Lone X project: selected questions rewritten to be
+standalone; answers rewritten for factual accuracy, AI identity, capability
+honesty and style; source row IDs, topics and correction reasons added.
+The original creator does not endorse these modifications.
+These adaptations retain their CC BY 4.0 attribution obligations; the
+repository MIT license does not replace the source license.
+
+Other external datasets listed in data-source-audit-2026-11-20.json are
+discovery records. Their bulk contents are not included in this directory.
+Original synthetic seed/pilot examples and project scripts are covered by
+the repository license. No dataset here is independently fluency-approved.

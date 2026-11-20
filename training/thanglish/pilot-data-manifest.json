@@ -1,0 +1,7 @@
+{
+  "provenance": "Original synthetic examples, assistant consistency review only; no independent fluent-speaker review",
+  "records": 84,
+  "evaluationPrompts": 12,
+  "sha256": "09296b0d99cc28310e6f611f0bdf390b93d8b7bed507de5623d8dc116beb0159",
+  "productionApproved": false
+}

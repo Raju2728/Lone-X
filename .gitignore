@@ -6,3 +6,6 @@ dist/
 
 public/downloads/
 test-artifacts/
+Installed/
+training/**/__pycache__/
+training/**/outputs/

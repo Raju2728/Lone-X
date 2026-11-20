@@ -1,0 +1,3 @@
+{"id":"routine","prompt":"Naalaikku seekiram ezhundhirukkanum. Innikki night enna plan pannalam?","review":"Give useful sleep/preparation advice in Latin-script Tamil; do not echo or invent actions."}
+{"id":"explanation","prompt":"Function kum variable kum enna vithiyasam? Simple ah explain pannunga.","review":"Explain values versus reusable behavior correctly in Thanglish; preserve any real code."}
+{"id":"literal","prompt":"Downloads la task.txt create panni \"Ready for review\" nu ezhuthu.","review":"Preserve task.txt and Ready for review; without action tools do not claim file creation, request Agent access/review."}

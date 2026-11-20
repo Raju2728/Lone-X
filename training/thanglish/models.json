@@ -1,0 +1,7 @@
+{
+  "qwen2.5:0.5b": "Qwen/Qwen2.5-0.5B-Instruct",
+  "qwen2.5-coder:0.5b": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+  "gemma3:1b": "google/gemma-3-1b-it",
+  "gemma3:4b": "google/gemma-3-4b-it",
+  "qwen3:4b-instruct": "Qwen/Qwen3-4B-Instruct-2507"
+}
